@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Horaria · Ben Ezra</title>
+<style>
+  :root{
+    --bg: #0d1321;
+    --bg-panel: #141c2e;
+    --bg-panel-2: #1a2439;
+    --line: #2a3654;
+    --gold: #cba135;
+    --gold-soft: #e4c66b;
+    --teal: #2f9c93;
+    --text: #e9e6dc;
+    --text-dim: #9aa4bd;
+    --bad: #c0605a;
+    --good: #5fa984;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:radial-gradient(ellipse at top, #182238 0%, #0d1321 60%);
+    color:var(--text); font-family: 'Georgia', 'Iowan Old Style', serif;
+    min-height:100vh; padding-bottom:60px;
+  }
+  header{
+    display:flex; align-items:center; gap:14px; padding:22px 20px 16px;
+    border-bottom:1px solid var(--line);
+  }
+  .mark{width:34px;height:34px;flex-shrink:0;}
+  header h1{
+    font-family: 'Snell Roundhand','Brush Script MT', cursive; font-weight:400;
+    font-size:1.7rem; color:var(--gold-soft); margin:0; letter-spacing:0.5px;
+  }
+  header .sub{
+    font-family: Helvetica, Arial, sans-serif; font-size:0.72rem; color:var(--text-dim);
+    text-transform:uppercase; letter-spacing:2px; margin-top:2px;
+  }
+  main{max-width:720px; margin:0 auto; padding:20px 16px;}
+  .panel{
+    background:var(--bg-panel); border:1px solid var(--line); border-radius:10px;
+    padding:20px; margin-bottom:18px;
+  }
+  .panel h2{
+    font-family: Helvetica, Arial, sans-serif; font-size:0.78rem; text-transform:uppercase;
+    letter-spacing:1.5px; color:var(--teal); margin:0 0 16px;
+  }
+  label{
+    display:block; font-family: Helvetica, Arial, sans-serif; font-size:0.78rem;
+    color:var(--text-dim); margin-bottom:4px;
+  }
+  input, select, textarea{
+    width:100%; background:var(--bg-panel-2); border:1px solid var(--line); color:var(--text);
+    border-radius:6px; padding:10px 11px; font-family: Helvetica, Arial, sans-serif;
+    font-size:0.92rem; margin-bottom:14px;
+  }
+  input:focus, select:focus, textarea:focus{outline:1px solid var(--gold); border-color:var(--gold);}
+  .row{display:flex; gap:12px;}
+  .row > div{flex:1;}
+  textarea{min-height:70px; resize:vertical;}
+  .mode-toggle{display:flex; gap:10px; margin-bottom:16px;}
+  .mode-toggle button{
+    flex:1; padding:11px; border-radius:6px; border:1px solid var(--line);
+    background:var(--bg-panel-2); color:var(--text-dim); cursor:pointer;
+    font-family: Helvetica, Arial, sans-serif; font-size:0.85rem; transition:.15s;
+  }
+  .mode-toggle button.active{
+    border-color:var(--gold); color:var(--gold-soft); background:#241f11;
+  }
+  button.primary{
+    width:100%; padding:13px; border-radius:6px; border:none; cursor:pointer;
+    background:linear-gradient(135deg, var(--gold) 0%, var(--gold-soft) 100%);
+    color:#1a1305; font-weight:700; font-family: Helvetica, Arial, sans-serif;
+    font-size:0.95rem; letter-spacing:0.5px;
+  }
+  button.primary:disabled{opacity:0.5; cursor:default;}
+  button.secondary{
+    padding:10px 16px; border-radius:6px; border:1px solid var(--teal); cursor:pointer;
+    background:transparent; color:var(--teal); font-family: Helvetica, Arial, sans-serif;
+    font-size:0.85rem;
+  }
+  .hint{font-family: Helvetica, Arial, sans-serif; font-size:0.72rem; color:var(--text-dim); margin-top:-8px; margin-bottom:14px;}
+  #resultado{display:none;}
+  .chart-meta{
+    font-family: Helvetica, Arial, sans-serif; font-size:0.85rem; color:var(--text-dim);
+    display:grid; grid-template-columns: 1fr 1fr; gap:6px 14px; margin-bottom:10px;
+  }
+  .chart-meta b{color:var(--text);}
+  .answer{
+    font-size:1.02rem; line-height:1.65; white-space:pre-wrap;
+  }
+  .flag{
+    display:inline-block; font-family: Helvetica, Arial, sans-serif; font-size:0.72rem;
+    padding:3px 9px; border-radius:20px; margin:2px 6px 2px 0;
+  }
+  .flag.bad{background:#3a1f1e; color:var(--bad); border:1px solid var(--bad);}
+  .flag.good{background:#17332b; color:var(--good); border:1px solid var(--good);}
+  details{
+    background:var(--bg-panel-2); border:1px solid var(--line); border-radius:8px;
+    margin-bottom:10px; padding:10px 14px;
+  }
+  details summary{
+    cursor:pointer; font-family: Helvetica, Arial, sans-serif; font-size:0.85rem;
+    color:var(--gold-soft);
+  }
+  pre{
+    white-space:pre-wrap; font-family: 'SF Mono', Consolas, monospace; font-size:0.78rem;
+    color:var(--text-dim); margin-top:10px; line-height:1.5;
+  }
+  .qa{border-top:1px solid var(--line); margin-top:16px; padding-top:16px;}
+  .qa .q{color:var(--gold-soft); font-family: Helvetica, Arial, sans-serif; font-size:0.85rem; margin-bottom:6px;}
+  .counter{
+    font-family: Helvetica, Arial, sans-serif; font-size:0.72rem; color:var(--text-dim);
+    text-align:right; margin-top:6px;
+  }
+  .error{
+    background:#2a1516; border:1px solid var(--bad); color:#f0a8a4; padding:12px 14px;
+    border-radius:8px; font-family: Helvetica, Arial, sans-serif; font-size:0.85rem; margin-bottom:14px;
+  }
+  .loading{
+    text-align:center; padding:30px; color:var(--text-dim); font-family: Helvetica, Arial, sans-serif;
+    font-size:0.88rem;
+  }
+  @media (max-width:480px){
+    .row{flex-direction:column;}
+    .chart-meta{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <svg class="mark" viewBox="0 0 40 40" fill="none">
+    <path d="M24 6a14 14 0 1 0 0 28 11 11 0 1 1 0-28Z" fill="#cba135"/>
+    <path d="M30 8 l1.3 3.3L34.5 12.6l-3.2 1.4L30 17.3l-1.3-3.3-3.2-1.4 3.2-1.3Z" fill="#2f9c93"/>
+  </svg>
+  <div>
+    <h1>Horaria · Ben Ezra</h1>
+    <div class="sub">Uso personal — Celina Sasiain</div>
+  </div>
+</header>
+
+<main>
+
+  <div class="panel" id="panel-form">
+    <h2>Datos de la pregunta</h2>
+    <div class="row">
+      <div>
+        <label>Fecha</label>
+        <input type="date" id="f-fecha">
+      </div>
+      <div>
+        <label>Hora (local, 24h)</label>
+        <input type="time" id="f-hora" step="60">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Ciudad / lugar</label>
+        <div style="position:relative;">
+          <input type="text" id="f-ciudad-buscar" placeholder="Escribí el nombre de la ciudad..." autocomplete="off">
+          <div id="ciudad-resultados" style="display:none; position:absolute; z-index:10; top:100%; left:0; right:0; background:var(--bg-panel-2); border:1px solid var(--gold); border-radius:6px; max-height:220px; overflow-y:auto;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="hint" id="ciudad-status" style="margin-top:-10px;">Buscá cualquier ciudad del mundo — la latitud, longitud y huso horario se completan solos (y el horario de verano se calcula según la fecha exacta).</div>
+    <div class="row" style="margin-top:4px;">
+      <div>
+        <button type="button" class="secondary" data-ciudad="Montevideo" style="font-size:0.75rem; padding:6px 10px;">Montevideo</button>
+      </div>
+      <div>
+        <button type="button" class="secondary" data-ciudad="Canelones" style="font-size:0.75rem; padding:6px 10px;">Canelones</button>
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Latitud</label>
+        <input type="number" id="f-lat" step="0.0001">
+      </div>
+      <div>
+        <label>Longitud</label>
+        <input type="number" id="f-lon" step="0.0001">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>UTC (calculado; editable si hace falta)</label>
+        <input type="number" id="f-utc" step="0.5">
+      </div>
+    </div>
+
+    <label>Casa de la pregunta (opcional, ayuda a precisar el significador)</label>
+    <select id="f-casa">
+      <option value="">— No especificar (la IA la infiere) —</option>
+      <option value="2">II — Dinero, bienes</option>
+      <option value="3">III — Hermanos, vecinos, viajes cortos</option>
+      <option value="4">IV — Hogar, familia de origen, el padre, final del asunto</option>
+      <option value="5">V — Hijos, romance, creatividad, embarazo</option>
+      <option value="6">VI — Salud, trabajo (empleados)</option>
+      <option value="7">VII — Pareja, socios, el otro</option>
+      <option value="8">VIII — Dinero de otros, herencias, muerte, cirugías</option>
+      <option value="9">IX — Viajes largos, estudios, ley</option>
+      <option value="10">X — Profesión, estatus, la madre</option>
+      <option value="11">XI — Amigos, proyectos, aliados</option>
+      <option value="12">XII — Enemigos ocultos, pruebas, encierro</option>
+    </select>
+
+    <label>Pregunta</label>
+    <div style="position:relative;">
+      <textarea id="f-pregunta" placeholder="Escribí la pregunta horaria tal cual se formuló, o dictala con el micrófono..."></textarea>
+      <button type="button" id="btn-mic" title="Dictar por voz" style="position:absolute; right:8px; bottom:22px; width:34px; height:34px; border-radius:50%; border:1px solid var(--line); background:var(--bg-panel-2); color:var(--gold-soft); cursor:pointer; font-size:1rem;">🎤</button>
+    </div>
+    <div class="hint" id="mic-status"></div>
+
+    <label>Modo de respuesta</label>
+    <div class="mode-toggle">
+      <button type="button" id="btn-ia" class="active">Con IA</button>
+      <button type="button" id="btn-sinia">Sin IA (solo informe técnico)</button>
+    </div>
+
+    <button class="primary" id="btn-consultar">Levantar carta y consultar</button>
+    <div class="hint" style="margin-top:10px;">La hora se toma como el momento exacto en que surge/se formula la pregunta.</div>
+  </div>
+
+  <div id="error-box"></div>
+  <div id="loading-box"></div>
+
+  <div class="panel" id="resultado">
+    <h2>Carta</h2>
+    <div class="chart-meta" id="chart-meta"></div>
+    <div id="flags"></div>
+
+    <div id="respuesta-ia" style="display:none;">
+      <div class="answer" id="answer-text"></div>
+    </div>
+
+    <div id="informe-tecnico" style="display:none;"></div>
+
+    <div class="qa-list" id="qa-list"></div>
+
+    <div class="qa" id="followup-box" style="display:none;">
+      <label>Pregunta de seguimiento sobre este mismo tema</label>
+      <div style="position:relative;">
+        <textarea id="f-followup" placeholder="Preguntá algo relacionado con esta misma consulta, o dictala..."></textarea>
+        <button type="button" id="btn-mic-followup" title="Dictar por voz" style="position:absolute; right:8px; bottom:22px; width:34px; height:34px; border-radius:50%; border:1px solid var(--line); background:var(--bg-panel-2); color:var(--gold-soft); cursor:pointer; font-size:1rem;">🎤</button>
+      </div>
+      <button class="secondary" id="btn-followup">Preguntar</button>
+      <div class="counter" id="counter"></div>
+    </div>
+
+    <div style="margin-top:18px;">
+      <button class="secondary" id="btn-nueva">+ Nueva consulta</button>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const API_BASE = ''; // mismo origen (Render sirve backend + frontend juntos)
+
+let selectedTimezone = null; // zona horaria IANA del lugar elegido (para calcular el UTC exacto según la fecha)
+
+function aplicarLugar(lugar){
+  document.getElementById('f-lat').value = lugar.lat;
+  document.getElementById('f-lon').value = lugar.lon;
+  selectedTimezone = lugar.timezone;
+  document.getElementById('f-ciudad-buscar').value = lugar.etiqueta;
+  document.getElementById('ciudad-resultados').style.display = 'none';
+  actualizarUtcDesdeTimezone();
+}
+
+async function actualizarUtcDesdeTimezone(){
+  if(!selectedTimezone) return;
+  const fecha = document.getElementById('f-fecha').value;
+  const hora = document.getElementById('f-hora').value;
+  if(!fecha || !hora) return;
+  const [year, month, day] = fecha.split('-').map(Number);
+  const [hour, minute] = hora.split(':').map(Number);
+  try{
+    const r = await fetch(API_BASE + '/api/utc_offset', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({timezone: selectedTimezone, year, month, day, hour, minute})
+    });
+    const d = await r.json();
+    if(r.ok) document.getElementById('f-utc').value = d.utc_offset;
+  } catch(e){ /* si falla, queda el valor manual que haya */ }
+}
+
+let buscarTimeout = null;
+document.getElementById('f-ciudad-buscar').addEventListener('input', (e)=>{
+  const texto = e.target.value;
+  selectedTimezone = null; // se invalida hasta elegir un resultado
+  clearTimeout(buscarTimeout);
+  const box = document.getElementById('ciudad-resultados');
+  if(texto.trim().length < 2){ box.style.display='none'; return; }
+  buscarTimeout = setTimeout(async ()=>{
+    try{
+      const r = await fetch(API_BASE + '/api/geocodificar?q=' + encodeURIComponent(texto));
+      const d = await r.json();
+      if(!r.ok || !d.resultados || d.resultados.length===0){ box.style.display='none'; return; }
+      box.innerHTML = '';
+      d.resultados.forEach(lugar=>{
+        const item = document.createElement('div');
+        item.textContent = lugar.etiqueta;
+        item.style.cssText = 'padding:9px 12px; cursor:pointer; font-family:Helvetica,Arial,sans-serif; font-size:0.85rem; border-bottom:1px solid var(--line);';
+        item.addEventListener('mouseenter', ()=> item.style.background = '#241f11');
+        item.addEventListener('mouseleave', ()=> item.style.background = 'transparent');
+        item.addEventListener('click', ()=> aplicarLugar(lugar));
+        box.appendChild(item);
+      });
+      box.style.display = 'block';
+    } catch(e){
+      document.getElementById('ciudad-status').textContent = 'No se pudo buscar la ciudad (revisá la conexión). Podés cargar lat/long/UTC a mano.';
+    }
+  }, 400);
+});
+
+document.querySelectorAll('[data-ciudad]').forEach(btn=>{
+  btn.addEventListener('click', async ()=>{
+    const r = await fetch(API_BASE + '/api/geocodificar?q=' + encodeURIComponent(btn.dataset.ciudad + ', Uruguay'));
+    const d = await r.json();
+    if(d.resultados && d.resultados.length) aplicarLugar(d.resultados[0]);
+  });
+});
+
+document.getElementById('f-fecha').addEventListener('change', actualizarUtcDesdeTimezone);
+document.getElementById('f-hora').addEventListener('change', actualizarUtcDesdeTimezone);
+
+// Fecha/hora actual por defecto
+const now = new Date();
+document.getElementById('f-fecha').value = now.toISOString().slice(0,10);
+document.getElementById('f-hora').value = now.toTimeString().slice(0,5);
+
+// Montevideo como lugar por defecto
+document.querySelector('[data-ciudad="Montevideo"]').click();
+
+let modo = 'ia';
+document.getElementById('btn-ia').addEventListener('click', ()=>{
+  modo='ia';
+  document.getElementById('btn-ia').classList.add('active');
+  document.getElementById('btn-sinia').classList.remove('active');
+});
+document.getElementById('btn-sinia').addEventListener('click', ()=>{
+  modo='sin_ia';
+  document.getElementById('btn-sinia').classList.add('active');
+  document.getElementById('btn-ia').classList.remove('active');
+});
+
+// --- Dictado por voz (Web Speech API) ---
+function setupMic(buttonId, textareaId, statusId){
+  const btn = document.getElementById(buttonId);
+  const ta = document.getElementById(textareaId);
+  const statusEl = statusId ? document.getElementById(statusId) : null;
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SpeechRecognition){
+    btn.style.display = 'none';
+    return;
+  }
+  const rec = new SpeechRecognition();
+  rec.lang = 'es-UY';
+  rec.interimResults = false;
+  rec.maxAlternatives = 1;
+  let listening = false;
+
+  rec.onresult = (e)=>{
+    const texto = e.results[0][0].transcript;
+    ta.value = ta.value ? (ta.value.trim() + ' ' + texto) : texto;
+  };
+  rec.onerror = ()=>{
+    if(statusEl) statusEl.textContent = 'No se pudo captar el audio. Probá de nuevo.';
+    listening = false; btn.style.color = 'var(--gold-soft)';
+  };
+  rec.onend = ()=>{
+    listening = false; btn.style.color = 'var(--gold-soft)';
+    if(statusEl) statusEl.textContent = '';
+  };
+  btn.addEventListener('click', ()=>{
+    if(listening){ rec.stop(); return; }
+    listening = true;
+    btn.style.color = '#e33';
+    if(statusEl) statusEl.textContent = 'Escuchando...';
+    rec.start();
+  });
+}
+setupMic('btn-mic', 'f-pregunta', 'mic-status');
+setupMic('btn-mic-followup', 'f-followup', null);
+
+let sessionId = null;
+let preguntasRestantes = 6;
+
+function showError(msg){
+  document.getElementById('error-box').innerHTML = `<div class="error">${msg}</div>`;
+}
+function clearError(){ document.getElementById('error-box').innerHTML = ''; }
+function showLoading(msg){
+  document.getElementById('loading-box').innerHTML = `<div class="loading">${msg}</div>`;
+}
+function clearLoading(){ document.getElementById('loading-box').innerHTML = ''; }
+
+document.getElementById('btn-consultar').addEventListener('click', async ()=>{
+  clearError();
+  if(selectedTimezone) await actualizarUtcDesdeTimezone();
+  const fecha = document.getElementById('f-fecha').value;
+  const hora = document.getElementById('f-hora').value;
+  const lat = parseFloat(document.getElementById('f-lat').value);
+  const lon = parseFloat(document.getElementById('f-lon').value);
+  const utc = parseFloat(document.getElementById('f-utc').value);
+  const pregunta = document.getElementById('f-pregunta').value.trim();
+  const casaPreguntaRaw = document.getElementById('f-casa').value;
+  const casaPregunta = casaPreguntaRaw ? parseInt(casaPreguntaRaw) : null;
+
+  if(!fecha || !hora || isNaN(lat) || isNaN(lon) || isNaN(utc)){
+    showError('Completá fecha, hora, latitud, longitud y UTC.'); return;
+  }
+  if(!pregunta){ showError('Escribí la pregunta.'); return; }
+
+  const [year, month, day] = fecha.split('-').map(Number);
+  const [hour, minute] = hora.split(':').map(Number);
+
+  showLoading('Calculando la carta...');
+  document.getElementById('btn-consultar').disabled = true;
+  try{
+    const r = await fetch(API_BASE + '/api/carta', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({year,month,day,hour,minute,utc_offset:utc,lat,lon,casa_pregunta:casaPregunta})
+    });
+    const d = await r.json();
+    if(!r.ok){ showError(d.error || 'Error al calcular la carta.'); clearLoading(); document.getElementById('btn-consultar').disabled=false; return; }
+    sessionId = d.session_id;
+    preguntasRestantes = 6;
+    renderChartMeta(d.informe);
+    document.getElementById('resultado').style.display = 'block';
+    document.getElementById('qa-list').innerHTML = '';
+
+    if(modo === 'sin_ia'){
+      renderInformeTecnico(d.informe);
+      document.getElementById('respuesta-ia').style.display='none';
+      document.getElementById('followup-box').style.display='none';
+    } else {
+      document.getElementById('informe-tecnico').style.display='none';
+      await preguntar(pregunta, true);
+      document.getElementById('followup-box').style.display='block';
+      updateCounter();
+    }
+  } catch(e){
+    showError('No se pudo conectar con el servidor: ' + e.message);
+  }
+  clearLoading();
+  document.getElementById('btn-consultar').disabled = false;
+});
+
+async function preguntar(pregunta, esInicial){
+  showLoading(esInicial ? 'Consultando a la IA...' : 'Analizando la pregunta de seguimiento...');
+  try{
+    const r = await fetch(API_BASE + '/api/preguntar', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({session_id: sessionId, pregunta, modo})
+    });
+    const d = await r.json();
+    if(!r.ok){ showError(d.error || 'Error al consultar.'); clearLoading(); return; }
+    if(modo === 'ia'){
+      preguntasRestantes = d.preguntas_restantes;
+      if(esInicial){
+        document.getElementById('respuesta-ia').style.display='block';
+        document.getElementById('answer-text').textContent = d.respuesta;
+      } else {
+        const qa = document.getElementById('qa-list');
+        const div = document.createElement('div');
+        div.className = 'qa';
+        div.innerHTML = `<div class="q">${escapeHtml(pregunta)}</div><div class="answer">${escapeHtml(d.respuesta)}</div>`;
+        qa.appendChild(div);
+      }
+      updateCounter();
+      if(preguntasRestantes <= 0){
+        document.getElementById('followup-box').style.display='none';
+      }
+    }
+  } catch(e){
+    showError('No se pudo conectar con el servidor: ' + e.message);
+  }
+  clearLoading();
+}
+
+document.getElementById('btn-followup').addEventListener('click', async ()=>{
+  clearError();
+  const p = document.getElementById('f-followup').value.trim();
+  if(!p) return;
+  document.getElementById('f-followup').value = '';
+  await preguntar(p, false);
+});
+
+document.getElementById('btn-nueva').addEventListener('click', ()=>{
+  document.getElementById('resultado').style.display='none';
+  document.getElementById('f-pregunta').value='';
+  clearError();
+  window.scrollTo({top:0, behavior:'smooth'});
+});
+
+function updateCounter(){
+  document.getElementById('counter').textContent = `Preguntas de seguimiento restantes: ${Math.max(0, preguntasRestantes)}`;
+}
+
+function escapeHtml(s){
+  const d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+}
+
+function renderChartMeta(informe){
+  const m = informe.chart_meta;
+  document.getElementById('chart-meta').innerHTML = `
+    <div>Fecha/hora: <b>${m.fecha_local.replace('T',' ')}</b></div>
+    <div>Ascendente: <b>${m.asc}</b></div>
+    <div>Medio Cielo: <b>${m.mc}</b></div>
+    <div>Carta: <b>${m.carta_diurna ? 'Diurna' : 'Nocturna'}</b></div>
+    <div>Regente de la Hora: <b>${m.regente_hora}</b></div>
+    <div style="grid-column:1/-1; color:var(--text-dim); font-size:0.8rem;">${m.regente_hora_significado}</div>
+    <div style="grid-column:1/-1; color:var(--text-dim); font-size:0.72rem;">Efemérides: ${Object.values(m.fuente_efemerides)[0]}</div>
+  `;
+  const v = informe.validez_tema;
+  let flags = '';
+  if(v.almuten_hora.coincide) flags += `<span class="flag good">Almuten I ↔ Regente Hora: coinciden</span>`;
+  else flags += `<span class="flag bad">Almuten I ↔ Regente Hora: sin coincidencia</span>`;
+  if(v.luna_vacia_de_curso) flags += `<span class="flag bad">Luna vacía de curso</span>`;
+  if(v.via_combusta) flags += `<span class="flag bad">Luna en vía combusta</span>`;
+  if(v.saturno_en_vii) flags += `<span class="flag bad">Saturno en VII</span>`;
+  document.getElementById('flags').innerHTML = flags;
+
+  const s = informe.significadores;
+  let sigHtml = `<div style="font-family:Helvetica,Arial,sans-serif; font-size:0.85rem; line-height:1.7; margin-top:10px;">
+    <b style="color:var(--teal);">Significador del consultante (I):</b> ${s.consultante.significador_recomendado}
+    — regente cúspide: ${s.consultante.regente_cuspide}, almuten(es): ${s.consultante.almutenes_cuspide.join(', ')}<br>
+    <span style="color:var(--text-dim); font-size:0.78rem;">${s.consultante.razonamiento}</span>`;
+  if(s.pregunta){
+    sigHtml += `<br><b style="color:var(--teal);">Significador de la pregunta (casa ${s.pregunta.casa}):</b> ${s.pregunta.significador_recomendado}
+    — regente cúspide: ${s.pregunta.regente_cuspide}, almuten(es): ${s.pregunta.almutenes_cuspide.join(', ')}<br>
+    <span style="color:var(--text-dim); font-size:0.78rem;">${s.pregunta.razonamiento}</span>`;
+  }
+  sigHtml += `</div>`;
+  document.getElementById('flags').innerHTML += sigHtml;
+}
+
+function renderInformeTecnico(informe){
+  const el = document.getElementById('informe-tecnico');
+  el.style.display = 'block';
+
+  let planetasHtml = '<table style="width:100%; font-family:Helvetica,Arial,sans-serif; font-size:0.82rem; border-collapse:collapse;">';
+  planetasHtml += '<tr style="color:var(--teal); text-align:left;"><th>Planeta</th><th>Signo</th><th>Casa</th><th>Dignidad</th></tr>';
+  for(const [p,d] of Object.entries(informe.planetas)){
+    planetasHtml += `<tr style="border-top:1px solid var(--line);"><td style="padding:4px 0;">${p}${d.retrógrado?' ℞':''}</td><td>${d.signo} ${d.grado}°</td><td>${d.casa}</td><td>${d.dignidad_esencial.join(', ')}</td></tr>`;
+  }
+  planetasHtml += '</table>';
+
+  let casasHtml = '';
+  for(const [n,c] of Object.entries(informe.casas)){
+    const alm = c.almuten_principal.map(a=>`${a.planeta} (${a.puntos}p)`).join(', ');
+    casasHtml += `<details><summary>Casa ${n} — ${c.etiqueta.split(' - ')[1] || ''}</summary>
+      <div style="font-family:Helvetica,Arial,sans-serif; font-size:0.82rem; margin-top:8px; line-height:1.6;">
+        Cúspide: <b>${c.signo_cuspide}</b><br>
+        Almuten: <b>${alm}</b><br>
+        Planetas en la casa: ${c.planetas_en_casa.join(', ') || '—'}<br>
+        ${c.signo_interceptado.hay ? `Signo interceptado: <b>${c.signo_interceptado.signos.join(', ')}</b> (regente ${Object.values(c.signo_interceptado.regentes).join(', ')})` : ''}
+      </div></details>`;
+  }
+
+  let aspectosHtml = '<div style="font-family:Helvetica,Arial,sans-serif; font-size:0.82rem; line-height:1.8;">';
+  informe.aspectos.forEach(a=>{
+    aspectosHtml += `${a.p1} ${a.aspecto} ${a.p2} (orbe ${a.orbe}°, ${a.aplicativo?'aplicativo':'separativo'}${a.recepcion?', recepción: '+a.recepcion:''})<br>`;
+  });
+  aspectosHtml += '</div>';
+
+  el.innerHTML = `
+    <details open><summary>Planetas</summary>${planetasHtml}</details>
+    <details><summary>Casas y almutenes</summary>${casasHtml}</details>
+    <details><summary>Aspectos</summary>${aspectosHtml}</details>
+    <details><summary>Luna — último/próximo aspecto</summary>
+      <pre>${JSON.stringify(informe.luna, null, 2)}</pre>
+    </details>
+  `;
+}
+</script>
+
+</body>
+</html>
