@@ -1,47 +1,164 @@
 # -*- coding: utf-8 -*-
-"""Geocodificación de lugares (API pública de Open-Meteo, sin necesidad de
-API key) y cálculo del offset UTC real -con horario de verano- para una
-fecha/hora concreta, a partir del nombre de zona horaria IANA (ej. 'Europe/Madrid')."""
+import os
+import json
+import uuid
+import time
+import threading
 
-import requests
-import datetime as dt
-from zoneinfo import ZoneInfo
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
+import anthropic
 
-GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search"
+from report import build_report
+from ai_prompt import SYSTEM_PROMPT, build_user_message
+from geocode import buscar_lugares, utc_offset_para
+
+app = Flask(__name__, static_folder="../frontend", static_url_path="")
+CORS(app)
+
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
+MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-5")
+MAX_FOLLOWUPS = 6
+
+client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
+
+# --- Sesiones en memoria (informe + historial de preguntas de esta consulta) ---
+SESSIONS = {}
+SESSIONS_LOCK = threading.Lock()
+SESSION_TTL_SECONDS = 60 * 60 * 12  # 12 horas
 
 
-def buscar_lugares(texto, idioma="es"):
-    """Devuelve una lista de coincidencias: nombre, país, provincia/estado,
-    lat, lon, zona horaria IANA."""
-    if not texto or len(texto.strip()) < 2:
-        return []
+def _cleanup_sessions():
+    now = time.time()
+    dead = [sid for sid, s in SESSIONS.items() if now - s["created_at"] > SESSION_TTL_SECONDS]
+    for sid in dead:
+        SESSIONS.pop(sid, None)
+
+
+@app.route("/api/health")
+def health():
+    return jsonify({"ok": True, "ia_configurada": bool(client)})
+
+
+@app.route("/api/geocodificar")
+def geocodificar():
+    """Busca lugares por nombre (autocompletar). Ej: /api/geocodificar?q=Roma"""
+    texto = request.args.get("q", "")
+    resultados = buscar_lugares(texto)
+    if isinstance(resultados, dict) and "error" in resultados:
+        return jsonify({"error": resultados["error"]}), 502
+    return jsonify({"resultados": resultados})
+
+
+@app.route("/api/utc_offset", methods=["POST"])
+def utc_offset():
+    """Dado un timezone IANA y una fecha/hora local, devuelve el offset UTC
+    real de esa fecha (respeta horario de verano)."""
+    data = request.get_json(force=True)
     try:
-        r = requests.get(GEOCODE_URL, params={
-            "name": texto.strip(), "count": 8, "language": idioma, "format": "json",
-        }, timeout=6)
-        r.raise_for_status()
-        data = r.json()
+        offset = utc_offset_para(
+            data["timezone"], data["year"], data["month"], data["day"],
+            data["hour"], data["minute"],
+        )
+        return jsonify({"utc_offset": offset})
     except Exception as e:
-        return {"error": str(e)}
+        return jsonify({"error": str(e)}), 400
 
-    resultados = []
-    for item in data.get("results", []) or []:
-        resultados.append({
-            "nombre": item.get("name"),
-            "admin1": item.get("admin1", ""),
-            "pais": item.get("country", ""),
-            "lat": item.get("latitude"),
-            "lon": item.get("longitude"),
-            "timezone": item.get("timezone"),
-            "etiqueta": ", ".join(filter(None, [item.get("name"), item.get("admin1"), item.get("country")])),
+
+@app.route("/api/carta", methods=["POST"])
+def crear_carta():
+    """Calcula la carta y arma el informe técnico. Crea una sesión para
+    poder hacer hasta 6 preguntas de seguimiento sobre este mismo tema."""
+    data = request.get_json(force=True)
+    required = ["year", "month", "day", "hour", "minute", "utc_offset", "lat", "lon"]
+    for r in required:
+        if r not in data:
+            return jsonify({"error": f"Falta el campo {r}"}), 400
+
+    try:
+        report = build_report(data)
+    except Exception as e:
+        return jsonify({"error": f"No se pudo calcular la carta: {e}"}), 500
+
+    report_public = {k: v for k, v in report.items() if k != "_chart_raw"}
+
+    with SESSIONS_LOCK:
+        _cleanup_sessions()
+        session_id = str(uuid.uuid4())
+        SESSIONS[session_id] = {
+            "report": report,  # incluye _chart_raw, se usa server-side solamente
+            "history": [],
+            "created_at": time.time(),
+        }
+
+    return jsonify({"session_id": session_id, "informe": report_public})
+
+
+@app.route("/api/preguntar", methods=["POST"])
+def preguntar():
+    """Responde una pregunta (inicial o de seguimiento) sobre la carta de la sesión.
+    modo: 'ia' o 'sin_ia'. Sin IA sólo devuelve el informe técnico ya calculado
+    (no vuelve a llamar a la IA); con IA usa la API de Anthropic."""
+    data = request.get_json(force=True)
+    session_id = data.get("session_id")
+    question = (data.get("pregunta") or "").strip()
+    modo = data.get("modo", "ia")
+
+    if not session_id or session_id not in SESSIONS:
+        return jsonify({"error": "Sesión no encontrada o expirada. Volvé a calcular la carta."}), 404
+    if not question:
+        return jsonify({"error": "Falta la pregunta."}), 400
+
+    session = SESSIONS[session_id]
+    history = session["history"]
+
+    if modo == "sin_ia":
+        report_public = {k: v for k, v in session["report"].items() if k != "_chart_raw"}
+        return jsonify({
+            "modo": "sin_ia",
+            "informe": report_public,
+            "preguntas_restantes": MAX_FOLLOWUPS - len(history),
         })
-    return resultados
+
+    # modo IA
+    if not client:
+        return jsonify({"error": "El servidor no tiene configurada ANTHROPIC_API_KEY."}), 500
+    if len(history) >= MAX_FOLLOWUPS + 1:
+        return jsonify({"error": f"Ya se alcanzó el máximo de {MAX_FOLLOWUPS} preguntas de seguimiento para este tema. Calculá una carta nueva para otra pregunta."}), 400
+
+    report_public = {k: v for k, v in session["report"].items() if k != "_chart_raw"}
+    report_json = json.dumps(report_public, ensure_ascii=False, default=str)
+
+    user_message = build_user_message(question, report_json, history)
+
+    try:
+        resp = client.messages.create(
+            model=MODEL,
+            max_tokens=2000,
+            system=SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_message}],
+        )
+        answer_text = "".join(
+            block.text for block in resp.content if getattr(block, "type", None) == "text"
+        )
+    except Exception as e:
+        return jsonify({"error": f"Error consultando la IA: {e}"}), 502
+
+    history.append({"pregunta": question, "respuesta": answer_text})
+
+    return jsonify({
+        "modo": "ia",
+        "respuesta": answer_text,
+        "preguntas_restantes": MAX_FOLLOWUPS + 1 - len(history),
+    })
 
 
-def utc_offset_para(timezone_name, year, month, day, hour, minute):
-    """Offset UTC (en horas, positivo al Este) real para esa fecha/hora local,
-    respetando el horario de verano vigente en esa zona en esa fecha."""
-    local_naive = dt.datetime(year, month, day, hour, minute)
-    local_aware = local_naive.replace(tzinfo=ZoneInfo(timezone_name))
-    offset = local_aware.utcoffset()
-    return offset.total_seconds() / 3600.0
+# --- Servir el frontend estático (para desplegar todo junto en Render) ---
+@app.route("/")
+def index():
+    return send_from_directory(app.static_folder, "index.html")
+
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)

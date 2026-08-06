@@ -22,13 +22,16 @@ frontend/
 
 ## Cómo se calculan las posiciones planetarias
 
-Usa `pyswisseph` con los archivos **reales de Swiss Ephemeris** (`.se1`,
-carpeta `backend/ephe/`, tomados del repositorio oficial), que dan la máxima
-precisión de la librería (sub-arco-segundo). Cubren el rango **1800-2399**,
-de sobra para cualquier horaria real. Si alguna vez necesitás datar algo
-fuera de ese rango, la app cae automáticamente al motor Moshier (igual de
-confiable, algo menos preciso) y te avisa en `chart_meta.fuente_efemerides`
-cuál usó para cada planeta. No depende de tablas propias como las de Kairós.
+Usa `pyswisseph` con los archivos **reales de Swiss Ephemeris** (`.se1`), que
+dan la máxima precisión de la librería (sub-arco-segundo). La app los
+descarga sola la primera vez que arranca (desde el repositorio oficial de
+Swiss Ephemeris) y los guarda en `backend/ephe/` — **no hace falta subirlos
+a GitHub**, son pesados (~2MB juntos) y a veces la web de GitHub falla al
+subir binarios grandes. Cubren el rango 1800-2399, de sobra para cualquier
+horaria real. Si alguna vez necesitás datar algo fuera de ese rango, o si la
+descarga automática fallara por algún motivo, la app cae automáticamente al
+motor Moshier (igual de confiable, algo menos preciso) y te avisa en
+`chart_meta.fuente_efemerides` cuál usó para cada planeta.
 
 ## Desplegar en Render (igual que hiciste con Kairós)
 
