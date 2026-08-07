@@ -438,7 +438,7 @@ document.getElementById('btn-consultar').addEventListener('click', async ()=>{
       document.getElementById('respuesta-ia').style.display='none';
       document.getElementById('followup-box').style.display='none';
     } else {
-      document.getElementById('informe-tecnico').style.display='none';
+      renderInformeTecnico(d.informe);
       await preguntar(pregunta, true);
       document.getElementById('followup-box').style.display='block';
       updateCounter();
