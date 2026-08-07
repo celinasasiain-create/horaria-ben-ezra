@@ -144,7 +144,7 @@ def preguntar():
     try:
         resp = client.messages.create(
             model=MODEL,
-            max_tokens=3000,
+            max_tokens=8000,
             system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_message}],
         )
