@@ -327,9 +327,11 @@ document.querySelectorAll('[data-ciudad]').forEach(btn=>{
 document.getElementById('f-fecha').addEventListener('change', actualizarUtcDesdeTimezone);
 document.getElementById('f-hora').addEventListener('change', actualizarUtcDesdeTimezone);
 
-// Fecha/hora actual por defecto
+// Fecha/hora actual por defecto (en hora LOCAL, no UTC)
 const now = new Date();
-document.getElementById('f-fecha').value = now.toISOString().slice(0,10);
+const pad2 = (n) => String(n).padStart(2, '0');
+const fechaLocal = `${now.getFullYear()}-${pad2(now.getMonth()+1)}-${pad2(now.getDate())}`;
+document.getElementById('f-fecha').value = fechaLocal;
 document.getElementById('f-hora').value = now.toTimeString().slice(0,5);
 
 // Montevideo como lugar por defecto
