@@ -22,6 +22,16 @@ MAX_FOLLOWUPS = 6
 
 client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
 
+
+@app.errorhandler(Exception)
+def manejar_cualquier_error(e):
+    """Red de seguridad: si algo se rompe en cualquier endpoint, devolver
+    siempre JSON con el motivo real (y dejarlo en los logs de Render), en vez
+    de que el servidor caiga y el navegador reciba una página HTML de error."""
+    import traceback
+    traceback.print_exc()
+    return jsonify({"error": f"Error interno del servidor: {type(e).__name__}: {e}"}), 500
+
 # --- Sesiones en memoria (informe + historial de preguntas de esta consulta) ---
 SESSIONS = {}
 SESSIONS_LOCK = threading.Lock()
