@@ -141,6 +141,12 @@ def preguntar():
         answer_text = "".join(
             block.text for block in resp.content if getattr(block, "type", None) == "text"
         )
+        if not answer_text.strip():
+            tipos = [getattr(b, "type", "?") for b in resp.content]
+            return jsonify({
+                "error": f"La IA no devolvió texto de respuesta (stop_reason: {resp.stop_reason}, "
+                         f"tipos de contenido recibidos: {tipos}). Probá de nuevo o achicá la pregunta."
+            }), 502
     except Exception as e:
         return jsonify({"error": f"Error consultando la IA: {e}"}), 502
 
