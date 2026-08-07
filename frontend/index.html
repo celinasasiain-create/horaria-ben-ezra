@@ -155,6 +155,7 @@
         <input type="time" id="f-hora" step="60">
       </div>
     </div>
+    <button type="button" class="secondary" id="btn-ahora" style="margin-bottom:14px;">⏱ Usar el momento actual (justo ahora)</button>
     <div class="row">
       <div>
         <label>Ciudad / lugar</label>
@@ -328,11 +329,16 @@ document.getElementById('f-fecha').addEventListener('change', actualizarUtcDesde
 document.getElementById('f-hora').addEventListener('change', actualizarUtcDesdeTimezone);
 
 // Fecha/hora actual por defecto (en hora LOCAL, no UTC)
-const now = new Date();
-const pad2 = (n) => String(n).padStart(2, '0');
-const fechaLocal = `${now.getFullYear()}-${pad2(now.getMonth()+1)}-${pad2(now.getDate())}`;
-document.getElementById('f-fecha').value = fechaLocal;
-document.getElementById('f-hora').value = now.toTimeString().slice(0,5);
+function fijarMomentoActual(){
+  const now = new Date();
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const fechaLocal = `${now.getFullYear()}-${pad2(now.getMonth()+1)}-${pad2(now.getDate())}`;
+  document.getElementById('f-fecha').value = fechaLocal;
+  document.getElementById('f-hora').value = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+  if(selectedTimezone) actualizarUtcDesdeTimezone();
+}
+fijarMomentoActual();
+document.getElementById('btn-ahora').addEventListener('click', fijarMomentoActual);
 
 // Montevideo como lugar por defecto
 document.querySelector('[data-ciudad="Montevideo"]').click();
