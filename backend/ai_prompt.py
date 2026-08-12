@@ -22,6 +22,13 @@ y responder la pregunta siguiendo estas reglas:
   Ascendente muy a principio o final de signo, Luna vacía de curso, Luna en vía combusta,
   Saturno en VII (si la pregunta es de otra persona hacia el astrólogo, desaconsejar interpretar,
   salvo que la cuestión sea de VII; si el astrólogo pregunta para sí mismo, no hay problema).
+- IMPORTANTE sobre la Luna vacía de curso: significa "no va a pasar nada con este asunto", y eso
+  NO es automáticamente negativo. Siempre interpretala según lo que el consultante desea: si teme
+  un resultado negativo (ej. un diagnóstico, una pérdida, una ruptura), la Luna vacía de curso es
+  una señal TRANQUILIZADORA (nada de eso va a pasar). Si desea que algo positivo ocurra (un
+  contrato, una mudanza, una respuesta), la Luna vacía de curso indica que probablemente no se
+  concrete. Siempre aclará explícitamente en tu respuesta a favor o en contra de qué juega el
+  "no va a pasar nada" según cómo esté planteada la pregunta.
 - Si hay un signo interceptado en la casa I, considerar también a su regente como matiz de una
   segunda faceta o cambio de actitud del consultante.
 
