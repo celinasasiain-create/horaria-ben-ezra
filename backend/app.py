@@ -144,13 +144,16 @@ def preguntar():
     try:
         resp = client.messages.create(
             model=MODEL,
-            max_tokens=8000,
+            max_tokens=16000,
             system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_message}],
         )
         answer_text = "".join(
             block.text for block in resp.content if getattr(block, "type", None) == "text"
         )
+        if resp.stop_reason == "max_tokens" and answer_text.strip():
+            answer_text += ("\n\n[Nota: esta respuesta se cortó por límite de longitud. "
+                             "Si quedó incompleta, pedime que la continúe o resumí la pregunta.]")
         if not answer_text.strip():
             tipos = [getattr(b, "type", "?") for b in resp.content]
             return jsonify({

@@ -90,6 +90,9 @@ cadentes=más tardío o incierto). Aclará siempre que la datación es orientati
 
 ## Formato de tu respuesta
 - Extendete lo necesario, pero sé concreto y directamente útil para una consulta profesional real.
+  Priorizá siempre llegar a la respuesta final concreta antes que la extensión: si tenés que elegir
+  entre desarrollar mucho un punto secundario o asegurarte de cerrar con la respuesta final clara,
+  elegí cerrar con la respuesta.
 - Explicitá: significador del consultante, significador de la pregunta (y de la Luna como
   co-significadora), el análisis de perfección (con qué condición se cumple o no), y la
   respuesta final a la pregunta (con datación orientativa si aplica).
