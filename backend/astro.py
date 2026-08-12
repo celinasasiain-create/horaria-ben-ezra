@@ -334,14 +334,9 @@ def reception_between(chart, p1, p2):
     return None
 
 
-def moon_last_next_aspect(chart):
-    """Último aspecto (separativo) y próximo aspecto (aplicativo) de la Luna
-    con cualquiera de los otros 6 planetas clásicos. Usa un barrido numérico
-    (en vez de una fórmula analítica con supuestos de signo) para no
-    confundirse cuando la Luna está "detrás" del otro planeta acercándose
-    a una conjunción: la separación angular siempre es un valor absoluto,
-    así que hace falta simular hacia adelante y hacia atrás en el tiempo
-    para saber realmente si un aspecto ya pasó o todavía viene."""
+def _moon_aspect_candidates(chart):
+    """Calcula (y devuelve completas, ordenadas) las listas de aspectos
+    pasados y aplicativos de la Luna con los demás planetas."""
     moon_lon = chart["planets"]["Luna"]["lon"]
     moon_spd = chart["planets"]["Luna"]["speed"]
     candidates_next = []
@@ -365,14 +360,12 @@ def moon_last_next_aspect(chart):
             def f(t):
                 return angular_sep(moon_lon + moon_spd * t, other_lon + other_spd * t) - asp_deg
 
-            # Buscar el cruce por cero más cercano hacia adelante (próximo/aplicativo)
             dias_next = None
             t_prev, f_prev = 0.0, f(0.0)
             t = PASO
             while t <= RANGO:
                 f_now = f(t)
                 if f_prev == 0 or (f_prev > 0) != (f_now > 0):
-                    # interpolación lineal simple entre t_prev y t
                     if f_now != f_prev:
                         dias_next = t_prev + (0 - f_prev) * (t - t_prev) / (f_now - f_prev)
                     else:
@@ -381,7 +374,6 @@ def moon_last_next_aspect(chart):
                 t_prev, f_prev = t, f_now
                 t += PASO
 
-            # Buscar el cruce por cero más cercano hacia atrás (último/separativo)
             dias_last = None
             t_prev, f_prev = 0.0, f(0.0)
             t = -PASO
@@ -399,7 +391,8 @@ def moon_last_next_aspect(chart):
             if dias_next is not None and 0 < dias_next < RANGO:
                 candidates_next.append({"planeta": name, "aspecto": asp_name,
                                          "orbe": round(abs(sep_ahora - asp_deg), 2),
-                                         "dias": round(dias_next, 2)})
+                                         "dias": round(dias_next, 2),
+                                         "lon_otro_ahora": other_lon, "spd_otro": other_spd})
             if dias_last is not None and -RANGO < dias_last < 0:
                 candidates_last.append({"planeta": name, "aspecto": asp_name,
                                          "orbe": round(abs(sep_ahora - asp_deg), 2),
@@ -407,24 +400,57 @@ def moon_last_next_aspect(chart):
 
     candidates_next.sort(key=lambda e: e["dias"])
     candidates_last.sort(key=lambda e: -e["dias"])
-    return (candidates_last[0] if candidates_last else None,
-            candidates_next[0] if candidates_next else None)
+    return candidates_last, candidates_next
+
+
+def moon_last_next_aspect(chart):
+    """Último aspecto (separativo) y próximo aspecto (aplicativo) de la Luna
+    con cualquiera de los otros 6 planetas clásicos. Usa un barrido numérico
+    (en vez de una fórmula analítica con supuestos de signo) para no
+    confundirse cuando la Luna está "detrás" del otro planeta acercándose
+    a una conjunción."""
+    candidates_last, candidates_next = _moon_aspect_candidates(chart)
+    last = {k: v for k, v in candidates_last[0].items()} if candidates_last else None
+    nxt = {k: v for k, v in candidates_next[0].items() if k not in ("lon_otro_ahora", "spd_otro")} if candidates_next else None
+    return (last, nxt)
+
+
+def _dias_a_cambio_signo(deg_in_sign, speed):
+    """Días hasta que un planeta cambie de signo, dado su grado dentro del
+    signo actual (0-30) y su velocidad diaria (puede ser negativa si es
+    retrógrado)."""
+    if speed > 0:
+        return (30 - deg_in_sign) / speed
+    elif speed < 0:
+        return deg_in_sign / abs(speed)
+    return None
 
 
 def moon_void_of_course(chart):
-    """Luna vacía de curso: no completa ningún aspecto mayor antes de cambiar de signo."""
-    _, next_asp = moon_last_next_aspect(chart)
+    """Luna vacía de curso: no completa ningún aspecto mayor antes de cambiar
+    de signo ELLA MISMA, y además el aspecto tiene que completarse antes de
+    que el OTRO planeta involucrado cambie de signo (si el otro planeta se
+    va de signo antes, ese aspecto no cuenta como "salvador")."""
+    candidates_last, candidates_next = _moon_aspect_candidates(chart)
     moon_deg = chart["planets"]["Luna"]["deg_in_sign"]
     moon_spd = chart["planets"]["Luna"]["speed"]
-    if moon_spd <= 0:
-        days_to_sign_change = None
-    else:
-        days_to_sign_change = (30 - moon_deg) / moon_spd
-    if next_asp is None:
-        return True, days_to_sign_change
-    if days_to_sign_change is not None and next_asp["dias"] > days_to_sign_change:
-        return True, days_to_sign_change
-    return False, days_to_sign_change
+    dias_cambio_luna = _dias_a_cambio_signo(moon_deg, moon_spd)
+
+    if dias_cambio_luna is None:
+        # Luna estacionaria (rarísimo): no hay ventana clara, se informa vacía
+        return True, None
+
+    for cand in candidates_next:
+        if cand["dias"] >= dias_cambio_luna:
+            continue  # la Luna cambia de signo antes de completar este aspecto
+        otro_deg = chart["planets"][cand["planeta"]]["deg_in_sign"]
+        otro_spd = cand["spd_otro"]
+        dias_cambio_otro = _dias_a_cambio_signo(otro_deg, otro_spd)
+        if dias_cambio_otro is not None and cand["dias"] >= dias_cambio_otro:
+            continue  # el otro planeta cambia de signo antes de que se complete el aspecto
+        return False, dias_cambio_luna  # hay un aspecto válido: no está vacía de curso
+
+    return True, dias_cambio_luna
 
 
 def via_combusta(chart):
