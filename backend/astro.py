@@ -336,28 +336,75 @@ def reception_between(chart, p1, p2):
 
 def moon_last_next_aspect(chart):
     """Último aspecto (separativo) y próximo aspecto (aplicativo) de la Luna
-    con cualquiera de los otros 6 planetas clásicos, dentro de un rango razonable."""
+    con cualquiera de los otros 6 planetas clásicos. Usa un barrido numérico
+    (en vez de una fórmula analítica con supuestos de signo) para no
+    confundirse cuando la Luna está "detrás" del otro planeta acercándose
+    a una conjunción: la separación angular siempre es un valor absoluto,
+    así que hace falta simular hacia adelante y hacia atrás en el tiempo
+    para saber realmente si un aspecto ya pasó o todavía viene."""
     moon_lon = chart["planets"]["Luna"]["lon"]
     moon_spd = chart["planets"]["Luna"]["speed"]
     candidates_next = []
     candidates_last = []
+
+    PASO = 0.02   # ~29 minutos
+    RANGO = 30.0  # días hacia cada lado
+
     for name, data in chart["planets"].items():
         if name == "Luna":
             continue
-        sep = angular_sep(moon_lon, data["lon"])
+        other_lon = data["lon"]
+        other_spd = data["speed"]
+
         for asp_name, asp_deg in ASPECTS.items():
-            diff = sep - asp_deg
-            # tiempo aproximado hasta el aspecto exacto (grados / velocidad relativa diaria)
-            rel_speed = moon_spd - data["speed"]
-            if rel_speed == 0:
-                continue
-            days_to_exact = -diff / rel_speed if rel_speed != 0 else None
-            entry = {"planeta": name, "aspecto": asp_name, "orbe": round(abs(diff), 2),
-                     "dias": round(days_to_exact, 2) if days_to_exact is not None else None}
-            if days_to_exact is not None and 0 < days_to_exact < 30 and abs(diff) < MOON_ORB:
-                candidates_next.append(entry)
-            if days_to_exact is not None and -30 < days_to_exact < 0 and abs(diff) < MOON_ORB:
-                candidates_last.append(entry)
+            orb = MOON_ORB
+            sep_ahora = angular_sep(moon_lon, other_lon)
+            if abs(sep_ahora - asp_deg) > orb:
+                continue  # ni siquiera está en orbe ahora; no es el aspecto relevante
+
+            def f(t):
+                return angular_sep(moon_lon + moon_spd * t, other_lon + other_spd * t) - asp_deg
+
+            # Buscar el cruce por cero más cercano hacia adelante (próximo/aplicativo)
+            dias_next = None
+            t_prev, f_prev = 0.0, f(0.0)
+            t = PASO
+            while t <= RANGO:
+                f_now = f(t)
+                if f_prev == 0 or (f_prev > 0) != (f_now > 0):
+                    # interpolación lineal simple entre t_prev y t
+                    if f_now != f_prev:
+                        dias_next = t_prev + (0 - f_prev) * (t - t_prev) / (f_now - f_prev)
+                    else:
+                        dias_next = t
+                    break
+                t_prev, f_prev = t, f_now
+                t += PASO
+
+            # Buscar el cruce por cero más cercano hacia atrás (último/separativo)
+            dias_last = None
+            t_prev, f_prev = 0.0, f(0.0)
+            t = -PASO
+            while t >= -RANGO:
+                f_now = f(t)
+                if f_prev == 0 or (f_prev > 0) != (f_now > 0):
+                    if f_now != f_prev:
+                        dias_last = t_prev + (0 - f_prev) * (t - t_prev) / (f_now - f_prev)
+                    else:
+                        dias_last = t
+                    break
+                t_prev, f_prev = t, f_now
+                t -= PASO
+
+            if dias_next is not None and 0 < dias_next < RANGO:
+                candidates_next.append({"planeta": name, "aspecto": asp_name,
+                                         "orbe": round(abs(sep_ahora - asp_deg), 2),
+                                         "dias": round(dias_next, 2)})
+            if dias_last is not None and -RANGO < dias_last < 0:
+                candidates_last.append({"planeta": name, "aspecto": asp_name,
+                                         "orbe": round(abs(sep_ahora - asp_deg), 2),
+                                         "dias": round(dias_last, 2)})
+
     candidates_next.sort(key=lambda e: e["dias"])
     candidates_last.sort(key=lambda e: -e["dias"])
     return (candidates_last[0] if candidates_last else None,
