@@ -142,18 +142,32 @@ def preguntar():
     user_message = build_user_message(question, report_json, history)
 
     try:
-        resp = client.messages.create(
-            model=MODEL,
-            max_tokens=16000,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_message}],
-        )
+        try:
+            resp = client.messages.create(
+                model=MODEL,
+                max_tokens=16000,
+                thinking={"type": "disabled"},
+                system=SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": user_message}],
+            )
+        except anthropic.BadRequestError:
+            # Por si el modelo/SDK no acepta el parámetro "thinking": reintentar sin él.
+            resp = client.messages.create(
+                model=MODEL,
+                max_tokens=16000,
+                system=SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": user_message}],
+            )
         answer_text = "".join(
             block.text for block in resp.content if getattr(block, "type", None) == "text"
         )
         if resp.stop_reason == "max_tokens" and answer_text.strip():
             answer_text += ("\n\n[Nota: esta respuesta se cortó por límite de longitud. "
                              "Si quedó incompleta, pedime que la continúe o resumí la pregunta.]")
+        if resp.stop_reason not in ("end_turn", "max_tokens"):
+            usage_info = getattr(resp, "usage", None)
+            answer_text += (f"\n\n---\n[Diagnóstico temporal: stop_reason={resp.stop_reason}, "
+                             f"usage={usage_info}]")
         if not answer_text.strip():
             tipos = [getattr(b, "type", "?") for b in resp.content]
             return jsonify({
