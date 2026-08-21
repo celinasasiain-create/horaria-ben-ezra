@@ -250,9 +250,19 @@
       <div class="counter" id="counter"></div>
     </div>
 
-    <div style="margin-top:18px;">
+    <div style="margin-top:18px; display:flex; gap:10px; flex-wrap:wrap;">
+      <button class="secondary" id="btn-guardar-caso">💾 Guardar caso (JSON)</button>
+      <button class="secondary" id="btn-exportar-txt">📄 Exportar TXT</button>
+      <button class="secondary" id="btn-exportar-docx">📝 Exportar Word</button>
       <button class="secondary" id="btn-nueva">+ Nueva consulta</button>
     </div>
+  </div>
+
+  <div class="panel" id="panel-cargar" style="margin-top:18px;">
+    <h2>Cargar un caso guardado</h2>
+    <label>Elegí el archivo .json que guardaste antes</label>
+    <input type="file" id="f-cargar-caso" accept="application/json,.json">
+    <div class="hint" id="cargar-status" style="margin-top:6px;"></div>
   </div>
 
 </main>
@@ -396,6 +406,9 @@ setupMic('btn-mic-followup', 'f-followup', null);
 
 let sessionId = null;
 let preguntasRestantes = 6;
+let informeActual = null;
+let historialActual = [];
+let preguntaOriginalActual = '';
 
 function showError(msg){
   document.getElementById('error-box').innerHTML = `<div class="error">${msg}</div>`;
@@ -437,6 +450,9 @@ document.getElementById('btn-consultar').addEventListener('click', async ()=>{
     if(!r.ok){ showError(d.error || 'Error al calcular la carta.'); clearLoading(); document.getElementById('btn-consultar').disabled=false; return; }
     sessionId = d.session_id;
     preguntasRestantes = 6;
+    informeActual = d.informe;
+    historialActual = [];
+    preguntaOriginalActual = pregunta;
     renderChartMeta(d.informe);
     document.getElementById('resultado').style.display = 'block';
     document.getElementById('qa-list').innerHTML = '';
@@ -469,6 +485,7 @@ async function preguntar(pregunta, esInicial){
     if(!r.ok){ showError(d.error || 'Error al consultar.'); clearLoading(); return; }
     if(modo === 'ia'){
       preguntasRestantes = d.preguntas_restantes;
+      historialActual.push({pregunta, respuesta: d.respuesta});
       if(esInicial){
         document.getElementById('respuesta-ia').style.display='block';
         document.getElementById('answer-text').textContent = d.respuesta;
@@ -501,6 +518,11 @@ document.getElementById('btn-followup').addEventListener('click', async ()=>{
 document.getElementById('btn-nueva').addEventListener('click', ()=>{
   document.getElementById('resultado').style.display='none';
   document.getElementById('f-pregunta').value='';
+  informeActual = null;
+  historialActual = [];
+  preguntaOriginalActual = '';
+  document.getElementById('cargar-status').textContent = '';
+  document.getElementById('f-cargar-caso').value = '';
   clearError();
   window.scrollTo({top:0, behavior:'smooth'});
 });
@@ -585,6 +607,143 @@ function renderInformeTecnico(informe){
     </details>
   `;
 }
+
+// ---------- Guardar / exportar / cargar casos ----------
+
+function nombreArchivoBase(){
+  const cm = informeActual?.chart_meta;
+  const fecha = cm?.fecha_local ? cm.fecha_local.replace(/[:T]/g,'-').slice(0,16) : new Date().toISOString().slice(0,16).replace(/[:T]/g,'-');
+  return `caso_horaria_${fecha}`;
+}
+
+function descargarBlob(contenido, tipo, nombreArchivo){
+  const blob = new Blob([contenido], {type: tipo});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nombreArchivo;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('btn-guardar-caso').addEventListener('click', ()=>{
+  if(!informeActual){ showError('Primero levantá una carta.'); return; }
+  const data = {
+    tipo: 'caso_horaria_ben_ezra', version: 1,
+    guardado_el: new Date().toISOString(),
+    pregunta_original: preguntaOriginalActual,
+    informe: informeActual,
+    historial: historialActual,
+  };
+  descargarBlob(JSON.stringify(data, null, 2), 'application/json', nombreArchivoBase() + '.json');
+});
+
+document.getElementById('btn-exportar-txt').addEventListener('click', ()=>{
+  if(!informeActual){ showError('Primero levantá una carta.'); return; }
+  const cm = informeActual.chart_meta;
+  const s = informeActual.significadores;
+  let t = `CONSULTA DE ASTROLOGÍA HORARIA — MÉTODO BEN EZRA\n`;
+  t += `${'='.repeat(50)}\n\n`;
+  t += `Fecha/hora: ${cm.fecha_local?.replace('T',' ')}\n`;
+  t += `Ascendente: ${cm.asc}    Medio Cielo: ${cm.mc}\n`;
+  t += `Carta: ${cm.carta_diurna ? 'Diurna' : 'Nocturna'}    Regente de la Hora: ${cm.regente_hora}\n`;
+  if(preguntaOriginalActual) t += `\nPregunta original: ${preguntaOriginalActual}\n`;
+  t += `\n--- SIGNIFICADORES ---\n`;
+  if(s?.consultante){
+    t += `Consultante (I): ${s.consultante.significador_recomendado}\n${s.consultante.razonamiento}\n`;
+  }
+  if(s?.pregunta){
+    t += `Pregunta (casa ${s.pregunta.casa}): ${s.pregunta.significador_recomendado}\n${s.pregunta.razonamiento}\n`;
+  }
+  t += `\n--- PLANETAS ---\n`;
+  for(const [p,d] of Object.entries(informeActual.planetas || {})){
+    t += `${p}${d.retrógrado?' ℞':''}: ${d.signo} ${d.grado}° — casa ${d.casa} — ${d.dignidad_esencial.join(', ')}\n`;
+  }
+  t += `\n--- LUNA ---\n`;
+  t += `Vacía de curso: ${informeActual.luna.vacia_de_curso ? 'Sí' : 'No'}    Vía combusta: ${informeActual.luna.via_combusta ? 'Sí' : 'No'}\n`;
+  if(historialActual.length){
+    t += `\n--- PREGUNTAS Y RESPUESTAS ---\n`;
+    historialActual.forEach((qa,i)=>{
+      t += `\nP${i+1}: ${qa.pregunta}\nR${i+1}: ${qa.respuesta}\n`;
+    });
+  }
+  descargarBlob(t, 'text/plain;charset=utf-8', nombreArchivoBase() + '.txt');
+});
+
+document.getElementById('btn-exportar-docx').addEventListener('click', async ()=>{
+  if(!informeActual){ showError('Primero levantá una carta.'); return; }
+  showLoading('Generando el documento Word...');
+  try{
+    const r = await fetch(API_BASE + '/api/exportar_docx', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({informe: informeActual, historial: historialActual, pregunta_original: preguntaOriginalActual})
+    });
+    if(!r.ok){ const d = await r.json(); showError(d.error || 'Error al generar el Word.'); clearLoading(); return; }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = nombreArchivoBase() + '.docx';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch(e){
+    showError('No se pudo generar el Word: ' + e.message);
+  }
+  clearLoading();
+});
+
+document.getElementById('f-cargar-caso').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const statusEl = document.getElementById('cargar-status');
+  statusEl.textContent = 'Cargando...';
+  try{
+    const texto = await file.text();
+    const data = JSON.parse(texto);
+    if(!data.informe){ statusEl.textContent = 'El archivo no parece un caso válido.'; return; }
+
+    informeActual = data.informe;
+    historialActual = data.historial || [];
+    preguntaOriginalActual = data.pregunta_original || '';
+
+    document.getElementById('resultado').style.display = 'block';
+    renderChartMeta(informeActual);
+    renderInformeTecnico(informeActual);
+    document.getElementById('qa-list').innerHTML = '';
+    document.getElementById('respuesta-ia').style.display = 'none';
+
+    if(historialActual.length){
+      document.getElementById('respuesta-ia').style.display = 'block';
+      document.getElementById('answer-text').textContent = historialActual[0].respuesta;
+      const qaList = document.getElementById('qa-list');
+      historialActual.slice(1).forEach(qa=>{
+        const div = document.createElement('div');
+        div.className = 'qa';
+        div.innerHTML = `<div class="q">${escapeHtml(qa.pregunta)}</div><div class="answer">${escapeHtml(qa.respuesta)}</div>`;
+        qaList.appendChild(div);
+      });
+    }
+
+    // Rehidratar la sesión en el servidor para poder seguir preguntando
+    const r = await fetch(API_BASE + '/api/rehidratar', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({informe: informeActual, historial: historialActual})
+    });
+    const d = await r.json();
+    if(r.ok){
+      sessionId = d.session_id;
+      preguntasRestantes = d.preguntas_restantes;
+      if(preguntasRestantes > 0){
+        document.getElementById('followup-box').style.display = 'block';
+        updateCounter();
+      }
+      statusEl.textContent = 'Caso cargado. Ya podés seguir preguntando sobre el mismo tema.';
+    } else {
+      statusEl.textContent = 'Caso cargado (solo lectura: no se pudo habilitar preguntas de seguimiento).';
+    }
+    window.scrollTo({top: document.getElementById('resultado').offsetTop - 20, behavior:'smooth'});
+  } catch(err){
+    statusEl.textContent = 'No se pudo leer el archivo: ' + err.message;
+  }
+});
 </script>
 
 </body>

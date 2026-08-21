@@ -5,13 +5,14 @@ import uuid
 import time
 import threading
 
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_cors import CORS
 import anthropic
 
 from report import build_report
 from ai_prompt import SYSTEM_PROMPT, build_user_message
 from geocode import buscar_lugares, utc_offset_para
+from exportar_docx import generar_docx
 
 app = Flask(__name__, static_folder="../frontend", static_url_path="")
 CORS(app)
@@ -184,6 +185,48 @@ def preguntar():
         "respuesta": answer_text,
         "preguntas_restantes": MAX_FOLLOWUPS + 1 - len(history),
     })
+
+
+@app.route("/api/exportar_docx", methods=["POST"])
+def exportar_docx():
+    """Genera un documento Word con el informe técnico y el historial de
+    preguntas/respuestas que el navegador ya tiene (no depende de la sesión
+    en memoria del servidor, así también funciona para casos recién cargados)."""
+    data = request.get_json(force=True)
+    informe = data.get("informe")
+    historial = data.get("historial", [])
+    pregunta_original = data.get("pregunta_original", "")
+    if not informe:
+        return jsonify({"error": "Falta el informe."}), 400
+    buf = generar_docx(informe, historial, pregunta_original)
+    return send_file(
+        buf, as_attachment=True,
+        download_name="consulta_horaria.docx",
+        mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
+
+
+@app.route("/api/rehidratar", methods=["POST"])
+def rehidratar():
+    """Recrea una sesión en el servidor a partir de un caso guardado
+    (informe técnico + historial ya calculados), para poder seguir
+    haciendo preguntas de seguimiento sin volver a levantar la carta."""
+    data = request.get_json(force=True)
+    informe = data.get("informe")
+    historial = data.get("historial", [])
+    if not informe:
+        return jsonify({"error": "Falta el informe para rehidratar la sesión."}), 400
+
+    with SESSIONS_LOCK:
+        _cleanup_sessions()
+        session_id = str(uuid.uuid4())
+        SESSIONS[session_id] = {
+            "report": informe,  # ya no incluye _chart_raw (no se puede recalcular traslación/colección, pero sí seguir preguntando)
+            "history": list(historial),
+            "created_at": time.time(),
+        }
+    restantes = max(0, MAX_FOLLOWUPS + 1 - len(historial))
+    return jsonify({"session_id": session_id, "preguntas_restantes": restantes})
 
 
 # --- Servir el frontend estático (para desplegar todo junto en Render) ---
