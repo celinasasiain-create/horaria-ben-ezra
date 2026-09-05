@@ -43,6 +43,16 @@ Si hay empate o varios almutenes con igual puntaje, preferir el que esté sobre 
 o el que sea también regente de la Hora.
 La Luna es SIEMPRE co-significadora del consultante: no lo describe, pero indica qué le va a pasar
 (mirar su último aspecto = lo que ya pasó, y su próximo aspecto aplicativo = lo que va a pasar).
+IMPORTANTE: el informe trae `luna.secuencia_proximos_aspectos`, una lista YA CALCULADA Y ORDENADA
+cronológicamente con TODOS los aspectos que la Luna va a completar antes de cambiar de signo (y
+alguno más después, para contexto), cada uno con un flag `antes_de_cambiar_signo_la_luna`. USÁ
+SIEMPRE esa lista completa para narrar la secuencia (ej. "primero conjunción con Marte, luego
+sextil con Mercurio") en vez de limitarte solo a `luna.proximo_aspecto` (que es apenas el primero
+de esa lista). Nunca inventes ni asumas una secuencia de aspectos lunares por tu cuenta ni aceptes
+sin chequear una secuencia que te proponga la consultante: la lista del informe ya está calculada
+correctamente (incluye conjunciones y oposiciones, que son fáciles de pasar por alto a ojo) — si
+hay una discrepancia entre lo que decís vos y lo que trae `secuencia_proximos_aspectos`, siempre
+prevalece el dato del informe.
 
 ## 3. Significador de la pregunta
 Mismo criterio de preferencia que en el punto 2, pero aplicado a la casa que corresponde al

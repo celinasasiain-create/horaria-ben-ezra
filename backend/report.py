@@ -4,7 +4,7 @@
 from tables import PLANETS, HOUR_RULER_MEANING, DESCRIPTIONS
 from astro import (
     compute_chart, almuten_of, essential_dignity_label, find_aspects,
-    moon_last_next_aspect, moon_void_of_course, via_combusta,
+    moon_last_next_aspect, moon_void_of_course, via_combusta, moon_upcoming_sequence,
 )
 from validity import (
     almuten_hour_agreement, house_intercepted, asc_degree_notes,
@@ -71,6 +71,7 @@ def build_report(payload):
 
     # --- Luna: último y próximo aspecto, vacía de curso, vía combusta ---
     last_asp, next_asp = moon_last_next_aspect(chart)
+    secuencia_luna = moon_upcoming_sequence(chart, max_items=6)
     voc, days_to_change = moon_void_of_course(chart)
 
     # --- Significadores (consultante y, si se indicó, casa de la pregunta) ---
@@ -103,6 +104,7 @@ def build_report(payload):
         "aspectos": aspects,
         "luna": {
             "ultimo_aspecto": last_asp, "proximo_aspecto": next_asp,
+            "secuencia_proximos_aspectos": secuencia_luna,
             "vacia_de_curso": voc, "via_combusta": via_combusta(chart),
         },
         "validez_tema": validity,

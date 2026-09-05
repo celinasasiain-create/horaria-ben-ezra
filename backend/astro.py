@@ -334,69 +334,70 @@ def reception_between(chart, p1, p2):
     return None
 
 
+def _proximos_cruces(lon1_0, spd1, lon2_0, spd2, asp_deg, t_min=-30.0, t_max=30.0):
+    """Encuentra, de forma analítica exacta (no numérica), todos los momentos
+    t (en días, positivos = futuro) dentro de [t_min, t_max] en los que dos
+    cuerpos que se mueven a velocidad constante forman el aspecto asp_deg
+    exacto (por cualquiera de sus dos configuraciones posibles, ej. +60°/-60°
+    para un sextil). Evita el problema de que la separación angular (siempre
+    positiva) no "cambia de signo" en una conjunción u oposición exactas."""
+    R = spd1 - spd2  # velocidad relativa (deg/día)
+    if R == 0:
+        return []
+    D0 = lon1_0 - lon2_0  # diferencia de longitud sin acotar a 0-360
+
+    if asp_deg == 0:
+        targets = [0]
+    elif asp_deg == 180:
+        targets = [180]
+    else:
+        targets = [asp_deg, -asp_deg]
+
+    resultados = []
+    for target in targets:
+        # Resolver D0 + R*t = target + 360*k, para enteros k, dentro del rango de t.
+        # Cubrimos de sobra el rango de k posibles dado el recorrido total en grados.
+        recorrido_total = abs(R) * (t_max - t_min)
+        k_margen = int(recorrido_total / 360.0) + 2
+        for k in range(-k_margen, k_margen + 1):
+            t = (target + 360 * k - D0) / R
+            if t_min <= t <= t_max:
+                resultados.append(round(t, 4))
+    return sorted(set(resultados))
+
+
 def _moon_aspect_candidates(chart):
     """Calcula (y devuelve completas, ordenadas) las listas de aspectos
-    pasados y aplicativos de la Luna con los demás planetas."""
+    pasados y aplicativos de la Luna con los demás planetas, usando el
+    cálculo analítico exacto de _proximos_cruces (válido para los 5
+    aspectos clásicos, incluidas conjunción y oposición)."""
     moon_lon = chart["planets"]["Luna"]["lon"]
     moon_spd = chart["planets"]["Luna"]["speed"]
     candidates_next = []
     candidates_last = []
-
-    PASO = 0.02   # ~29 minutos
-    RANGO = 30.0  # días hacia cada lado
+    RANGO = 30.0
 
     for name, data in chart["planets"].items():
         if name == "Luna":
             continue
         other_lon = data["lon"]
         other_spd = data["speed"]
+        sep_ahora = angular_sep(moon_lon, other_lon)
 
         for asp_name, asp_deg in ASPECTS.items():
-            orb = MOON_ORB
-            sep_ahora = angular_sep(moon_lon, other_lon)
-            if abs(sep_ahora - asp_deg) > orb:
-                continue  # ni siquiera está en orbe ahora; no es el aspecto relevante
-
-            def f(t):
-                return angular_sep(moon_lon + moon_spd * t, other_lon + other_spd * t) - asp_deg
-
-            dias_next = None
-            t_prev, f_prev = 0.0, f(0.0)
-            t = PASO
-            while t <= RANGO:
-                f_now = f(t)
-                if f_prev == 0 or (f_prev > 0) != (f_now > 0):
-                    if f_now != f_prev:
-                        dias_next = t_prev + (0 - f_prev) * (t - t_prev) / (f_now - f_prev)
-                    else:
-                        dias_next = t
-                    break
-                t_prev, f_prev = t, f_now
-                t += PASO
-
-            dias_last = None
-            t_prev, f_prev = 0.0, f(0.0)
-            t = -PASO
-            while t >= -RANGO:
-                f_now = f(t)
-                if f_prev == 0 or (f_prev > 0) != (f_now > 0):
-                    if f_now != f_prev:
-                        dias_last = t_prev + (0 - f_prev) * (t - t_prev) / (f_now - f_prev)
-                    else:
-                        dias_last = t
-                    break
-                t_prev, f_prev = t, f_now
-                t -= PASO
-
-            if dias_next is not None and 0 < dias_next < RANGO:
+            cruces = _proximos_cruces(moon_lon, moon_spd, other_lon, other_spd, asp_deg,
+                                       t_min=-RANGO, t_max=RANGO)
+            futuros = [t for t in cruces if t > 0]
+            pasados = [t for t in cruces if t < 0]
+            if futuros:
                 candidates_next.append({"planeta": name, "aspecto": asp_name,
-                                         "orbe": round(abs(sep_ahora - asp_deg), 2),
-                                         "dias": round(dias_next, 2),
+                                         "orbe_actual": round(abs(sep_ahora - asp_deg), 2),
+                                         "dias": min(futuros),
                                          "lon_otro_ahora": other_lon, "spd_otro": other_spd})
-            if dias_last is not None and -RANGO < dias_last < 0:
+            if pasados:
                 candidates_last.append({"planeta": name, "aspecto": asp_name,
-                                         "orbe": round(abs(sep_ahora - asp_deg), 2),
-                                         "dias": round(dias_last, 2)})
+                                         "orbe_actual": round(abs(sep_ahora - asp_deg), 2),
+                                         "dias": max(pasados)})
 
     candidates_next.sort(key=lambda e: e["dias"])
     candidates_last.sort(key=lambda e: -e["dias"])
@@ -413,6 +414,34 @@ def moon_last_next_aspect(chart):
     last = {k: v for k, v in candidates_last[0].items()} if candidates_last else None
     nxt = {k: v for k, v in candidates_next[0].items() if k not in ("lon_otro_ahora", "spd_otro")} if candidates_next else None
     return (last, nxt)
+
+
+def moon_upcoming_sequence(chart, max_items=5):
+    """Devuelve la secuencia completa (ordenada cronológicamente) de los
+    próximos aspectos que la Luna va a completar, con un tope de días =
+    lo que le falta para cambiar de signo + una ventana chica extra, para
+    poder narrar correctamente casos como "primero conjunción con Marte,
+    luego sextil con Mercurio"."""
+    _, candidates_next = _moon_aspect_candidates(chart)
+    moon_deg = chart["planets"]["Luna"]["deg_in_sign"]
+    moon_spd = chart["planets"]["Luna"]["speed"]
+    dias_cambio_luna = _dias_a_cambio_signo(moon_deg, moon_spd) or 0
+
+    secuencia = []
+    vistos = set()
+    for cand in candidates_next:
+        clave = (cand["planeta"], cand["aspecto"])
+        if clave in vistos:
+            continue
+        vistos.add(clave)
+        secuencia.append({
+            "planeta": cand["planeta"], "aspecto": cand["aspecto"],
+            "dias": cand["dias"],
+            "antes_de_cambiar_signo_la_luna": cand["dias"] < dias_cambio_luna,
+        })
+        if len(secuencia) >= max_items:
+            break
+    return secuencia
 
 
 def _dias_a_cambio_signo(deg_in_sign, speed):
