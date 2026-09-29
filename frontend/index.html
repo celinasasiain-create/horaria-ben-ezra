@@ -141,134 +141,32 @@
   </div>
 </header>
 
-<main>
-
-  <div class="panel" id="panel-form">
-    <h2>Datos de la pregunta</h2>
-    <div class="row">
-      <div>
-        <label>Fecha</label>
-        <input type="date" id="f-fecha">
-      </div>
-      <div>
-        <label>Hora (local, 24h)</label>
-        <input type="time" id="f-hora" step="60">
-      </div>
-    </div>
-    <button type="button" class="secondary" id="btn-ahora" style="margin-bottom:14px;">⏱ Usar el momento actual (justo ahora)</button>
-    <div class="row">
-      <div>
-        <label>Ciudad / lugar</label>
-        <div style="position:relative;">
-          <input type="text" id="f-ciudad-buscar" placeholder="Escribí el nombre de la ciudad..." autocomplete="off">
-          <div id="ciudad-resultados" style="display:none; position:absolute; z-index:10; top:100%; left:0; right:0; background:var(--bg-panel-2); border:1px solid var(--gold); border-radius:6px; max-height:220px; overflow-y:auto;"></div>
-        </div>
-      </div>
-    </div>
-    <div class="hint" id="ciudad-status" style="margin-top:-10px;">Buscá cualquier ciudad del mundo — la latitud, longitud y huso horario se completan solos (y el horario de verano se calcula según la fecha exacta).</div>
-    <div class="row" style="margin-top:4px;">
-      <div>
-        <button type="button" class="secondary" data-ciudad="Montevideo" style="font-size:0.75rem; padding:6px 10px;">Montevideo</button>
-      </div>
-      <div>
-        <button type="button" class="secondary" data-ciudad="Canelones" style="font-size:0.75rem; padding:6px 10px;">Canelones</button>
-      </div>
-    </div>
-    <div class="row">
-      <div>
-        <label>Latitud</label>
-        <input type="number" id="f-lat" step="0.0001">
-      </div>
-      <div>
-        <label>Longitud</label>
-        <input type="number" id="f-lon" step="0.0001">
-      </div>
-    </div>
-    <div class="row">
-      <div>
-        <label>UTC (calculado; editable si hace falta)</label>
-        <input type="number" id="f-utc" step="0.5">
-      </div>
-    </div>
-
-    <label>Casa de la pregunta (opcional, ayuda a precisar el significador)</label>
-    <select id="f-casa">
-      <option value="">— No especificar (la IA la infiere) —</option>
-      <option value="2">II — Dinero, bienes</option>
-      <option value="3">III — Hermanos, vecinos, viajes cortos</option>
-      <option value="4">IV — Hogar, familia de origen, el padre, final del asunto</option>
-      <option value="5">V — Hijos, romance, creatividad, embarazo</option>
-      <option value="6">VI — Salud, trabajo (empleados)</option>
-      <option value="7">VII — Pareja, socios, el otro</option>
-      <option value="8">VIII — Dinero de otros, herencias, muerte, cirugías</option>
-      <option value="9">IX — Viajes largos, estudios, ley</option>
-      <option value="10">X — Profesión, estatus, la madre</option>
-      <option value="11">XI — Amigos, proyectos, aliados</option>
-      <option value="12">XII — Enemigos ocultos, pruebas, encierro</option>
-    </select>
-
-    <label>Pregunta</label>
-    <div style="position:relative;">
-      <textarea id="f-pregunta" placeholder="Escribí la pregunta horaria tal cual se formuló, o dictala con el micrófono..."></textarea>
-      <button type="button" id="btn-mic" title="Dictar por voz" style="position:absolute; right:8px; bottom:22px; width:34px; height:34px; border-radius:50%; border:1px solid var(--line); background:var(--bg-panel-2); color:var(--gold-soft); cursor:pointer; font-size:1rem;">🎤</button>
-    </div>
-    <div class="hint" id="mic-status"></div>
-
-    <label>Modo de respuesta</label>
-    <div class="mode-toggle">
-      <button type="button" id="btn-ia" class="active">Con IA</button>
-      <button type="button" id="btn-sinia">Sin IA (solo informe técnico)</button>
-    </div>
-
-    <button class="primary" id="btn-consultar">Levantar carta y consultar</button>
-    <div class="hint" style="margin-top:10px;">La hora se toma como el momento exacto en que surge/se formula la pregunta.</div>
-  </div>
-
-  <div id="error-box"></div>
-  <div id="loading-box"></div>
-
-  <div class="panel" id="resultado">
-    <h2>Carta</h2>
-    <div class="chart-meta" id="chart-meta"></div>
-    <div id="flags"></div>
-
-    <div id="respuesta-ia" style="display:none;">
-      <div class="answer" id="answer-text"></div>
-    </div>
-
-    <div id="informe-tecnico" style="display:none;"></div>
-
-    <div class="qa-list" id="qa-list"></div>
-
-    <div class="qa" id="followup-box" style="display:none;">
-      <label>Pregunta de seguimiento sobre este mismo tema</label>
-      <div style="position:relative;">
-        <textarea id="f-followup" placeholder="Preguntá algo relacionado con esta misma consulta, o dictala..."></textarea>
-        <button type="button" id="btn-mic-followup" title="Dictar por voz" style="position:absolute; right:8px; bottom:22px; width:34px; height:34px; border-radius:50%; border:1px solid var(--line); background:var(--bg-panel-2); color:var(--gold-soft); cursor:pointer; font-size:1rem;">🎤</button>
-      </div>
-      <button class="secondary" id="btn-followup">Preguntar</button>
-      <div class="counter" id="counter"></div>
-    </div>
-
-    <div style="margin-top:18px; display:flex; gap:10px; flex-wrap:wrap;">
-      <button class="secondary" id="btn-guardar-caso">💾 Guardar caso (JSON)</button>
-      <button class="secondary" id="btn-exportar-txt">📄 Exportar TXT</button>
-      <button class="secondary" id="btn-exportar-docx">📝 Exportar Word</button>
-      <button class="secondary" id="btn-nueva">+ Nueva consulta</button>
-    </div>
-  </div>
-
-  <div class="panel" id="panel-cargar" style="margin-top:18px;">
-    <h2>Cargar un caso guardado</h2>
-    <label>Elegí el archivo .json que guardaste antes</label>
-    <input type="file" id="f-cargar-caso" accept="application/json,.json">
-    <div class="hint" id="cargar-status" style="margin-top:6px;"></div>
-  </div>
-
 </main>
+
+<footer id="version-footer" style="text-align:center; padding:14px 16px 30px; font-family:Helvetica,Arial,sans-serif; font-size:0.68rem; color:var(--text-dim); letter-spacing:0.5px;">
+  Versión: <span id="version-info">verificando…</span>
+</footer>
 
 <script>
 const API_BASE = ''; // mismo origen (Render sirve backend + frontend juntos)
+
+async function mostrarVersion() {
+  try {
+    const r = await fetch(API_BASE + '/api/health');
+    const j = await r.json();
+    const el = document.getElementById('version-info');
+    if (j.commit && j.commit !== 'desconocido') {
+      const fecha = j.commit_fecha ? ` · ${j.commit_fecha}` : '';
+      el.textContent = `${j.commit.substring(0,7)}${fecha}`;
+      el.title = j.commit;
+    } else {
+      el.textContent = 'no disponible (revisar en Render qué commit está Live)';
+    }
+  } catch (e) {
+    document.getElementById('version-info').textContent = 'sin conexión con el servidor';
+  }
+}
+mostrarVersion();
 
 let selectedTimezone = null; // zona horaria IANA del lugar elegido (para calcular el UTC exacto según la fecha)
 
