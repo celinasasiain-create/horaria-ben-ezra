@@ -46,9 +46,42 @@ def _cleanup_sessions():
         SESSIONS.pop(sid, None)
 
 
+def _commit_actual():
+    """Devuelve el hash del commit que está corriendo realmente en este
+    proceso (para poder detectar, desde la propia app, si Render quedó
+    con un deploy viejo aunque el dashboard diga otra cosa)."""
+    commit = os.environ.get("RENDER_GIT_COMMIT", "")
+    fecha = ""
+    if not commit:
+        try:
+            import subprocess
+            commit = subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], cwd=os.path.dirname(__file__), text=True
+            ).strip()
+        except Exception:
+            commit = "desconocido"
+    if commit and commit != "desconocido":
+        try:
+            import subprocess
+            fecha = subprocess.check_output(
+                ["git", "show", "-s", "--format=%ci", commit], cwd=os.path.dirname(__file__), text=True
+            ).strip()[:16]
+        except Exception:
+            fecha = ""
+    return commit, fecha
+
+
+_COMMIT_ACTUAL, _COMMIT_FECHA = _commit_actual()
+
+
 @app.route("/api/health")
 def health():
-    return jsonify({"ok": True, "ia_configurada": bool(client)})
+    return jsonify({
+        "ok": True,
+        "ia_configurada": bool(client),
+        "commit": _COMMIT_ACTUAL,
+        "commit_fecha": _COMMIT_FECHA,
+    })
 
 
 @app.route("/api/geocodificar")
