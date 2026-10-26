@@ -10,7 +10,7 @@ from flask_cors import CORS
 import anthropic
 
 from report import build_report
-from ai_prompt import SYSTEM_PROMPT, build_user_message
+from ai_prompt import SYSTEM_PROMPT, build_user_message, FORMULAR_SYSTEM_PROMPT, build_formular_message
 from geocode import buscar_lugares, utc_offset_para
 from exportar_docx import generar_docx
 
@@ -218,6 +218,66 @@ def preguntar():
         "respuesta": answer_text,
         "preguntas_restantes": MAX_FOLLOWUPS + 1 - len(history),
     })
+
+
+def _extraer_json(texto):
+    """Saca el objeto JSON de la respuesta de la IA, aunque venga con texto o
+    con un bloque de código alrededor. Devuelve None si no se puede leer."""
+    texto = (texto or "").strip()
+    inicio, fin = texto.find("{"), texto.rfind("}")
+    if inicio == -1 or fin <= inicio:
+        return None
+    try:
+        return json.loads(texto[inicio:fin + 1])
+    except ValueError:
+        return None
+
+
+@app.route("/api/formular", methods=["POST"])
+def formular():
+    """Ayuda a formular bien la pregunta ANTES de levantar la carta. No usa la
+    carta ni la sesión: solo evalúa el borrador y propone una formulación."""
+    data = request.get_json(force=True)
+    borrador = (data.get("pregunta") or "").strip()
+    contexto = (data.get("contexto") or "").strip()
+
+    if not borrador:
+        return jsonify({"error": "Escribí primero un borrador de la pregunta."}), 400
+    if len(borrador) > 2000 or len(contexto) > 2000:
+        return jsonify({"error": "El texto es demasiado largo (máximo 2000 caracteres por campo)."}), 400
+    if not client:
+        return jsonify({"error": "El servidor no tiene configurada ANTHROPIC_API_KEY."}), 500
+
+    mensaje = build_formular_message(borrador, contexto)
+    try:
+        try:
+            resp = client.messages.create(
+                model=MODEL, max_tokens=3000,
+                thinking={"type": "disabled"},
+                system=FORMULAR_SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": mensaje}],
+            )
+        except anthropic.BadRequestError:
+            resp = client.messages.create(
+                model=MODEL, max_tokens=3000,
+                system=FORMULAR_SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": mensaje}],
+            )
+    except Exception as e:
+        return jsonify({"error": f"Error consultando la IA: {e}"}), 502
+
+    texto = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
+    resultado = _extraer_json(texto)
+    if not resultado or not resultado.get("formulacion_sugerida"):
+        return jsonify({"error": "No pude interpretar la respuesta del asistente. Probá de nuevo."}), 502
+
+    # Normalizar para que el frontend nunca se rompa por un campo faltante
+    resultado.setdefault("veredicto", "ajustar")
+    resultado.setdefault("resumen", "")
+    resultado["chequeos"] = [c for c in (resultado.get("chequeos") or []) if isinstance(c, dict)]
+    resultado["alternativas"] = [str(a) for a in (resultado.get("alternativas") or [])]
+    resultado["aclaraciones"] = [str(a) for a in (resultado.get("aclaraciones") or [])]
+    return jsonify(resultado)
 
 
 @app.route("/api/exportar_docx", methods=["POST"])
