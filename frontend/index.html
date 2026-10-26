@@ -214,6 +214,14 @@
     </div>
     <div class="hint" id="mic-status"></div>
 
+    <details style="margin-bottom:12px;">
+      <summary>Contexto para el asistente de formulación (opcional)</summary>
+      <textarea id="f-contexto" style="margin-top:10px; margin-bottom:0;" placeholder="Ej.: es la pregunta de una consultante, ella desea que pase; la «otra persona» es su jefa; ya hace dos meses que espera una respuesta..."></textarea>
+    </details>
+    <button type="button" class="secondary" id="btn-formular" style="margin-bottom:12px;">🧭 Ayudame a formular la pregunta</button>
+    <div id="formular-box"></div>
+    <div class="hint" id="formular-status" style="margin-top:0;">La carta se levanta para el momento en que la pregunta queda clara. Si formulás con calma, usá «fijar el momento actual» con la versión final; si es la pregunta de una consultante, mantené la hora en que la hizo.</div>
+
     <label>Modo de respuesta</label>
     <div class="mode-toggle">
       <button type="button" id="btn-ia" class="active">Con IA</button>
@@ -425,6 +433,117 @@ function setupMic(buttonId, textareaId, statusId){
 }
 setupMic('btn-mic', 'f-pregunta', 'mic-status');
 setupMic('btn-mic-followup', 'f-followup', null);
+
+// --- Asistente de formulación de la pregunta ---
+const FORMULAR_VEREDICTO = {
+  lista:      {txt: 'Lista para consultar',      estilo: 'background:#17332b; color:var(--good); border:1px solid var(--good);'},
+  ajustar:    {txt: 'Conviene ajustar un poco',  estilo: 'background:#241f11; color:var(--gold-soft); border:1px solid var(--gold);'},
+  reformular: {txt: 'Conviene reformularla',     estilo: 'background:#3a1f1e; color:var(--bad); border:1px solid var(--bad);'},
+};
+const FORMULAR_ESTADO = {
+  ok:       {icono: '✓', color: 'var(--good)'},
+  atencion: {icono: '!', color: 'var(--gold-soft)'},
+  problema: {icono: '✗', color: 'var(--bad)'},
+};
+let formularTextos = [];
+
+function aplicarFormulacion(texto, fijarAhora){
+  const ta = document.getElementById('f-pregunta');
+  ta.value = texto;
+  if(fijarAhora) fijarMomentoActual();
+  document.getElementById('formular-box').innerHTML = '';
+  document.getElementById('formular-status').textContent = fijarAhora
+    ? 'Formulación aplicada y momento actual fijado. Revisá fecha y hora, y levantá la carta.'
+    : 'Formulación aplicada (la fecha y la hora no se tocaron). Levantá la carta cuando quieras.';
+  ta.scrollIntoView({behavior: 'smooth', block: 'center'});
+}
+
+function renderFormular(r){
+  formularTextos = [r.formulacion_sugerida].concat(r.alternativas || []);
+  const v = FORMULAR_VEREDICTO[r.veredicto] || FORMULAR_VEREDICTO.ajustar;
+  let html = `<div style="background:var(--bg-panel-2); border:1px solid var(--line); border-radius:8px; padding:14px; margin-bottom:14px; font-family:Helvetica,Arial,sans-serif; font-size:0.85rem; line-height:1.55;">`;
+  html += `<span class="flag" style="${v.estilo} margin-left:0;">${v.txt}</span>`;
+  if(r.resumen) html += `<div style="margin-top:8px;">${escapeHtml(r.resumen)}</div>`;
+
+  if(r.chequeos.length){
+    html += `<div style="margin-top:12px;">`;
+    r.chequeos.forEach(c=>{
+      const e = FORMULAR_ESTADO[c.estado] || FORMULAR_ESTADO.atencion;
+      html += `<div style="display:flex; gap:8px; margin-bottom:6px;">
+        <span style="color:${e.color}; font-weight:700; width:14px; flex-shrink:0;">${e.icono}</span>
+        <div><b>${escapeHtml(c.criterio || '')}</b>${c.comentario ? ' — <span style="color:var(--text-dim);">' + escapeHtml(c.comentario) + '</span>' : ''}</div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `<div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--line);">
+    <div style="color:var(--teal); font-size:0.72rem; text-transform:uppercase; letter-spacing:1.2px; margin-bottom:6px;">Formulación sugerida</div>
+    <div style="font-family:Georgia,serif; font-size:1rem; color:var(--text); margin-bottom:10px;">${escapeHtml(r.formulacion_sugerida)}</div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <button type="button" class="secondary" data-formular="0" data-ahora="0">Usar esta formulación</button>
+      <button type="button" class="secondary" data-formular="0" data-ahora="1">Usar y fijar el momento actual</button>
+    </div>
+  </div>`;
+
+  if(r.alternativas.length){
+    html += `<div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--line);">
+      <div style="color:var(--teal); font-size:0.72rem; text-transform:uppercase; letter-spacing:1.2px; margin-bottom:6px;">Tu borrador juntaba más de una pregunta — una carta para cada una</div>`;
+    r.alternativas.forEach((a, i)=>{
+      html += `<div style="margin-bottom:8px;"><div style="font-family:Georgia,serif; color:var(--text);">${escapeHtml(a)}</div>
+        <button type="button" class="secondary" style="margin-top:4px; padding:5px 10px; font-size:0.75rem;" data-formular="${i+1}" data-ahora="0">Usar esta</button></div>`;
+    });
+    html += `</div>`;
+  }
+
+  if(r.aclaraciones.length){
+    html += `<div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--line);">
+      <div style="color:var(--teal); font-size:0.72rem; text-transform:uppercase; letter-spacing:1.2px; margin-bottom:6px;">Conviene que definas</div>
+      <ul style="margin:0; padding-left:18px; color:var(--text-dim);">${r.aclaraciones.map(a=>`<li>${escapeHtml(a)}</li>`).join('')}</ul>
+      <div style="margin-top:6px; color:var(--text-dim); font-size:0.78rem;">Podés cargarlo en el contexto o ajustar el borrador y volver a tocar «Ayudame a formular».</div>
+    </div>`;
+  }
+  html += `<div class="hint" style="margin-top:12px; border-left:3px solid #c9a227; padding-left:10px;">
+    <strong>Antes de levantar la carta:</strong> si la pregunta te llega por teléfono o mensaje, la carta se levanta
+    para <em>tu</em> lugar y hora: vos sos el canal de transmisión. Si la pregunta la formuló otra astróloga y te la
+    pasa, usá los datos del momento en que ella la formuló.</div>`;
+  html += `</div>`;
+
+  const box = document.getElementById('formular-box');
+  box.innerHTML = html;
+  box.querySelectorAll('[data-formular]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      aplicarFormulacion(formularTextos[parseInt(btn.dataset.formular)], btn.dataset.ahora === '1');
+    });
+  });
+}
+
+document.getElementById('btn-formular').addEventListener('click', async ()=>{
+  const btn = document.getElementById('btn-formular');
+  const box = document.getElementById('formular-box');
+  const borrador = document.getElementById('f-pregunta').value.trim();
+  if(!borrador){
+    box.innerHTML = `<div class="error">Escribí (o dictá) primero un borrador de la pregunta, aunque sea imperfecto, y después tocá este botón.</div>`;
+    return;
+  }
+  btn.disabled = true;
+  const textoOriginal = btn.textContent;
+  btn.textContent = 'Revisando la pregunta...';
+  box.innerHTML = '';
+  try{
+    const r = await fetch(API_BASE + '/api/formular', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({pregunta: borrador, contexto: document.getElementById('f-contexto').value})
+    });
+    const d = await r.json();
+    if(!r.ok){ box.innerHTML = `<div class="error">${escapeHtml(d.error || 'No se pudo revisar la pregunta.')}</div>`; }
+    else { renderFormular(d); }
+  } catch(e){
+    box.innerHTML = `<div class="error">No se pudo conectar con el servidor: ${escapeHtml(e.message)}</div>`;
+  }
+  btn.disabled = false;
+  btn.textContent = textoOriginal;
+});
 
 let sessionId = null;
 let preguntasRestantes = 6;
