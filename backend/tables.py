@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 Tablas de dignidades esenciales, débilidades, recepción, aspectos y
-descripciones planetarias para el método Ben Ezra (transmitido por
-Pepa Sanchís), según el material entregado por Celina.
+descripciones planetarias para el método de Pepa Sanchís, según el
+material entregado por Celina.
 
 Todas las posiciones se manejan en grados 0-360 (0 = 0° Aries).
 """
@@ -68,7 +68,7 @@ SIGN_MODE = {
 PLANET_QUALITY = {
     "Sol": {"caliente", "seco"},
     "Luna": {"frío", "húmedo"},
-    "Mercurio": {"variable"},  # frío/seco según tradición, se trata aparte
+    "Mercurio": {"seco"},  # Pepa (Lección 2): Mercurio es neutro y sólo MUY ligeramente seco
     "Venus": {"frío", "húmedo"},
     "Marte": {"caliente", "seco"},
     "Júpiter": {"caliente", "húmedo"},
@@ -76,38 +76,39 @@ PLANET_QUALITY = {
 }
 
 # ---------------------------------------------------------------------------
-# TÉRMINOS EGIPCIOS (límites clásicos, grados dentro del signo 0-30)
-# Cada signo: lista de (planeta, grado_inicio, grado_fin)
+# TÉRMINOS (tablas de Jean-Marie Michiels, material de Pepa Sanchís: términos de
+# Ptolomeo). Cada signo: lista de (planeta, grado_inicio, grado_fin), grados 0-30.
+# Verificado grado a grado contra las tablas de Michiels.
 # ---------------------------------------------------------------------------
 TERMS = {
-    "Aries":       [("Júpiter", 0, 6), ("Venus", 6, 12), ("Mercurio", 12, 20), ("Marte", 20, 25), ("Saturno", 25, 30)],
-    "Tauro":       [("Venus", 0, 8), ("Mercurio", 8, 15), ("Júpiter", 15, 22), ("Saturno", 22, 26), ("Marte", 26, 30)],
-    "Géminis":     [("Mercurio", 0, 7), ("Júpiter", 7, 14), ("Venus", 14, 21), ("Marte", 21, 25), ("Saturno", 25, 30)],
-    "Cáncer":      [("Marte", 0, 6), ("Venus", 6, 13), ("Mercurio", 13, 20), ("Júpiter", 20, 27), ("Saturno", 27, 30)],
-    "Leo":         [("Júpiter", 0, 6), ("Venus", 6, 11), ("Saturno", 11, 18), ("Mercurio", 18, 24), ("Marte", 24, 30)],
-    "Virgo":       [("Mercurio", 0, 7), ("Venus", 7, 13), ("Júpiter", 13, 18), ("Marte", 18, 24), ("Saturno", 24, 30)],
-    "Libra":       [("Saturno", 0, 6), ("Mercurio", 6, 11), ("Júpiter", 11, 19), ("Venus", 19, 24), ("Marte", 24, 30)],
-    "Escorpio":    [("Marte", 0, 6), ("Venus", 6, 14), ("Mercurio", 14, 21), ("Júpiter", 21, 27), ("Saturno", 27, 30)],
-    "Sagitario":   [("Júpiter", 0, 8), ("Venus", 8, 14), ("Mercurio", 14, 19), ("Saturno", 19, 25), ("Marte", 25, 30)],
-    "Capricornio": [("Mercurio", 0, 7), ("Júpiter", 7, 14), ("Venus", 14, 22), ("Saturno", 22, 26), ("Marte", 26, 30)],
-    "Acuario":     [("Mercurio", 0, 7), ("Venus", 7, 13), ("Júpiter", 13, 20), ("Marte", 20, 25), ("Saturno", 25, 30)],
-    "Piscis":      [("Venus", 0, 12), ("Júpiter", 12, 16), ("Mercurio", 16, 19), ("Marte", 19, 28), ("Saturno", 28, 30)],
+    "Aries":      [("Júpiter", 0, 6), ("Venus", 6, 12), ("Mercurio", 12, 20), ("Marte", 20, 25), ("Saturno", 25, 30)],
+    "Tauro":      [("Venus", 0, 8), ("Mercurio", 8, 14), ("Júpiter", 14, 22), ("Saturno", 22, 27), ("Marte", 27, 30)],
+    "Géminis":    [("Mercurio", 0, 6), ("Júpiter", 6, 12), ("Venus", 12, 17), ("Marte", 17, 24), ("Saturno", 24, 30)],
+    "Cáncer":     [("Marte", 0, 7), ("Venus", 7, 13), ("Mercurio", 13, 19), ("Júpiter", 19, 26), ("Saturno", 26, 30)],
+    "Leo":        [("Júpiter", 0, 6), ("Venus", 6, 11), ("Saturno", 11, 18), ("Mercurio", 18, 24), ("Marte", 24, 30)],
+    "Virgo":      [("Mercurio", 0, 7), ("Venus", 7, 17), ("Júpiter", 17, 21), ("Marte", 21, 28), ("Saturno", 28, 30)],
+    "Libra":      [("Saturno", 0, 6), ("Mercurio", 6, 14), ("Júpiter", 14, 21), ("Venus", 21, 28), ("Marte", 28, 30)],
+    "Escorpio":   [("Marte", 0, 7), ("Venus", 7, 11), ("Mercurio", 11, 19), ("Júpiter", 19, 24), ("Saturno", 24, 30)],
+    "Sagitario":  [("Júpiter", 0, 12), ("Venus", 12, 17), ("Mercurio", 17, 21), ("Saturno", 21, 26), ("Marte", 26, 30)],
+    "Capricornio":[("Mercurio", 0, 7), ("Júpiter", 7, 14), ("Venus", 14, 22), ("Saturno", 22, 26), ("Marte", 26, 30)],
+    "Acuario":    [("Mercurio", 0, 7), ("Venus", 7, 13), ("Júpiter", 13, 20), ("Marte", 20, 25), ("Saturno", 25, 30)],
+    "Piscis":     [("Venus", 0, 12), ("Júpiter", 12, 16), ("Mercurio", 16, 19), ("Marte", 19, 28), ("Saturno", 28, 30)],
 }
 
 # ---------------------------------------------------------------------------
-# DECANATOS (Caldeos): 3 decanatos de 10° por signo, orden de Marte->Sol->Venus...
-# regente del primer decanato = regente del propio signo; luego sigue orden caldeo.
+# DECANATOS (tablas de Michiels y ejemplo de la lección "Recepción" de Pepa:
+# 12°40′ de Capricornio -> decanato de Marte). Orden caldeo desde 0° de Aries:
+# el primer decanato de Aries es de Marte, luego Sol, Venus, Mercurio, Luna,
+# Saturno, Júpiter, y así sucesivamente a lo largo de los 36 decanatos.
 # ---------------------------------------------------------------------------
 CHALDEAN_ORDER = ["Saturno", "Júpiter", "Marte", "Sol", "Venus", "Mercurio", "Luna"]
+DECAN_SEQUENCE = ["Marte", "Sol", "Venus", "Mercurio", "Luna", "Saturno", "Júpiter"]
 
 
 def decan_ruler(sign, degree_in_sign):
-    """Regente de decanato: el primer decanato lo rige el regente del signo,
-    y a partir de ahí se sigue el orden caldeo."""
-    start_planet = DOMICILE[sign][0]
-    start_idx = CHALDEAN_ORDER.index(start_planet)
-    decan_n = int(degree_in_sign // 10)  # 0,1,2
-    return CHALDEAN_ORDER[(start_idx + decan_n) % 7]
+    """Regente del decanato (10° cada uno) según la secuencia caldea desde 0° Aries."""
+    decan_n = SIGNS.index(sign) * 3 + int(degree_in_sign // 10)  # 0..35
+    return DECAN_SEQUENCE[decan_n % 7]
 
 
 # ---------------------------------------------------------------------------
@@ -124,9 +125,25 @@ POINTS = {
 ASPECTS = {
     "Conjunción": 0, "Sextil": 60, "Cuadratura": 90, "Trígono": 120, "Oposición": 180,
 }
-# Orbes tradicionales aproximados por planeta (suma de orbes de los dos cuerpos / 2, simplificado a un orbe fijo razonable)
-DEFAULT_ORB = 8.0
-MOON_ORB = 10.0
+# ORBES (Lección 10, según Al Biruni): los aspectos no tienen orbe, lo tienen los planetas.
+# El orbe de un aspecto es la SUMA de los semidiámetros de los dos planetas, igual para
+# todos los aspectos. Semidiámetros: Saturno 4°30′, Júpiter 4°30′, Marte 4°, Sol 7°30′,
+# Venus 3°30′, Mercurio 3°30′, Luna 6°. (Ej.: Sol-Marte 11°30′; Mercurio-Marte 7°30′;
+# Luna-Venus 9°30′.) Pepa recomienda que sea algo menor al límite, pues en el límite
+# tal vez no actúe.
+SEMIDIAMETERS = {
+    "Saturno": 4.5, "Júpiter": 4.5, "Marte": 4.0, "Sol": 7.5,
+    "Venus": 3.5, "Mercurio": 3.5, "Luna": 6.0,
+}
+
+
+def aspect_orb(p1, p2=None):
+    """Orbe para un aspecto entre p1 y p2. Si p2 es None (aspecto de un planeta a una
+    cúspide, que es un punto sin orbe propio) se usa el semidiámetro del planeta."""
+    if p2 is None:
+        return SEMIDIAMETERS[p1]
+    return SEMIDIAMETERS[p1] + SEMIDIAMETERS[p2]
+
 
 # ---------------------------------------------------------------------------
 # Descripciones (Lección 6): psicología / físico / objetos-sitios / colores

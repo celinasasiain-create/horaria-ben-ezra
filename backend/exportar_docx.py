@@ -18,7 +18,7 @@ def _heading(doc, text, level=1):
 def generar_docx(informe, historial, pregunta_original="", meta_extra=None):
     doc = Document()
 
-    title = doc.add_heading("Consulta de Astrología Horaria — Método Ben Ezra", level=0)
+    title = doc.add_heading("Consulta de Astrología Horaria — Método de Pepa Sanchís", level=0)
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
     cm = informe.get("chart_meta", {})
@@ -78,7 +78,7 @@ def generar_docx(informe, historial, pregunta_original="", meta_extra=None):
     validez = informe.get("validez_tema", {})
     _heading(doc, "Validez del tema", level=1)
     ah = validez.get("almuten_hora", {})
-    doc.add_paragraph(f"Almuten I / Regente Hora: {'Coinciden' if ah.get('coincide') else 'Sin coincidencia'}")
+    doc.add_paragraph(f"Almuten I / Regente Hora: {'Coinciden (tema radical)' if ah.get('coincide') else ('Concordancia escasa (tema no radical)' if ah.get('nivel') == 'escasa' else 'Sin coincidencia (tema no radical)')}")
     for nota in ah.get("notas", []):
         doc.add_paragraph(f"• {nota}", style=None)
     if validez.get("saturno_en_vii"):

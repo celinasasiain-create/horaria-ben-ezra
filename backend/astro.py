@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Motor de cálculo astrológico para Astrología Horaria - método Ben Ezra
-(transmitido por Pepa Sanchís).
+Motor de cálculo astrológico para Astrología Horaria - método de Pepa Sanchís.
 
 Usa pyswisseph con el motor Moshier incorporado (sin necesidad de
 archivos de efemérides externos) - precisión de arco-segundos, más
@@ -44,7 +43,7 @@ swe.set_ephe_path(EPHE_PATH)
 from tables import (
     SIGNS, PLANETS, DOMICILE, EXILE, EXALTATION, FALL, TRIPLICITY,
     SIGN_ELEMENT, SIGN_MODE, TERMS, decan_ruler, POINTS, ASPECTS,
-    DEFAULT_ORB, MOON_ORB, CHALDEAN_HOUR_ORDER, WEEKDAY_RULER,
+    aspect_orb, CHALDEAN_HOUR_ORDER, WEEKDAY_RULER,
 )
 
 SWE_PLANET = {
@@ -219,6 +218,33 @@ def compute_chart(year, month, day, hour, minute, utc_offset, lat, lon_geo, tz_n
     }
 
 
+def house_of_lon(chart, lon_p):
+    """Casa (1-12) en la que cae una longitud, según las cúspides de la carta."""
+    cusps = chart["house_cusps"]
+    for i in range(12):
+        span = norm360(cusps[(i + 1) % 12] - cusps[i])
+        if norm360(lon_p - cusps[i]) < span:
+            return i + 1
+    return 12
+
+
+def fortune_part(chart):
+    """Parte de Fortuna (Lección 8: indica quién sale ganando; el dispositor del Parte,
+    si es el almuten de I gana el consultante, si es el de VII gana el otro).
+    Fórmula tradicional: carta diurna Asc + Luna - Sol; nocturna Asc + Sol - Luna.
+    (La fórmula no figura en las lecciones disponibles; es la habitual.)"""
+    asc = chart["asc"]
+    sun = chart["planets"]["Sol"]["lon"]
+    moon = chart["planets"]["Luna"]["lon"]
+    lon = norm360(asc + moon - sun) if chart["is_day"] else norm360(asc + sun - moon)
+    sign, deg = sign_of(lon)
+    return {
+        "lon": lon, "signo": sign, "grado": round(deg, 2),
+        "casa": house_of_lon(chart, lon),
+        "dispositor": DOMICILE[sign][0],
+    }
+
+
 def planetary_hour_ruler(jd_ut, ut_dt, lat, lon_geo):
     """Calcula el regente de la hora planetaria caldea vigente."""
     try:
@@ -285,7 +311,7 @@ def find_aspects(chart):
             lon1, lon2 = planets[p1]["lon"], planets[p2]["lon"]
             sep = angular_sep(lon1, lon2)
             for asp_name, asp_deg in ASPECTS.items():
-                orb = MOON_ORB if ("Luna" in (p1, p2)) else DEFAULT_ORB
+                orb = aspect_orb(p1, p2)
                 diff = abs(sep - asp_deg)
                 if diff <= orb:
                     # Aplicativo o separativo: comparar velocidades relativas

@@ -3,7 +3,7 @@
 la cúspide > planeta partil sobre la cúspide > almuten) para dar UN significador
 recomendado por casa, mostrando siempre el razonamiento y los candidatos alternativos."""
 
-from tables import DOMICILE, PLANETS, ASPECTS, DEFAULT_ORB
+from tables import DOMICILE, PLANETS, ASPECTS, aspect_orb
 from astro import almuten_of, angular_sep, sign_of
 
 
@@ -15,7 +15,7 @@ def _aspects_cusp(chart, planet, cusp_lon):
     lon = chart["planets"][planet]["lon"]
     sep = angular_sep(lon, cusp_lon)
     for asp_name, asp_deg in ASPECTS.items():
-        if abs(sep - asp_deg) <= DEFAULT_ORB:
+        if abs(sep - asp_deg) <= aspect_orb(planet):
             return asp_name
     return None
 

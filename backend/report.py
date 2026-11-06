@@ -4,7 +4,7 @@
 from tables import PLANETS, HOUR_RULER_MEANING, DESCRIPTIONS
 from astro import (
     compute_chart, almuten_of, essential_dignity_label, find_aspects,
-    moon_last_next_aspect, moon_void_of_course, via_combusta, moon_upcoming_sequence,
+    moon_last_next_aspect, moon_void_of_course, via_combusta, moon_upcoming_sequence, fortune_part,
 )
 from validity import (
     almuten_hour_agreement, house_intercepted, asc_degree_notes,
@@ -87,6 +87,17 @@ def build_report(payload):
         "saturno_en_vii": saturn_in_vii(chart),
     }
 
+    # --- Parte de Fortuna: quién sale ganando (dispositor = almuten de I -> el consultante) ---
+    pf = fortune_part(chart)
+    alm_I = [a["planeta"] for a in cusps_report[1]["almuten_principal"]]
+    alm_VII = [a["planeta"] for a in cusps_report[7]["almuten_principal"]]
+    pf_report = {
+        "signo": pf["signo"], "grado": pf["grado"], "casa": pf["casa"],
+        "dispositor": pf["dispositor"],
+        "dispositor_es_almuten_de_I": pf["dispositor"] in alm_I,
+        "dispositor_es_almuten_de_VII": pf["dispositor"] in alm_VII,
+    }
+
     return {
         "chart_meta": {
             "fecha_local": chart["local_datetime"], "utc_offset": chart["utc_offset"],
@@ -107,6 +118,7 @@ def build_report(payload):
             "secuencia_proximos_aspectos": secuencia_luna,
             "vacia_de_curso": voc, "via_combusta": via_combusta(chart),
         },
+        "parte_fortuna": pf_report,
         "validez_tema": validity,
         "_chart_raw": chart,  # se usa internamente para traslación/colección bajo demanda
     }
