@@ -689,8 +689,9 @@ function renderChartMeta(informe){
   `;
   const v = informe.validez_tema;
   let flags = '';
-  if(v.almuten_hora.coincide) flags += `<span class="flag good">Almuten I ↔ Regente Hora: coinciden</span>`;
-  else flags += `<span class="flag bad">Almuten I ↔ Regente Hora: sin coincidencia</span>`;
+  if(v.almuten_hora.coincide) flags += `<span class="flag good">Almuten I ↔ Regente Hora: coinciden (tema radical)</span>`;
+  else if(v.almuten_hora.nivel === 'escasa') flags += `<span class="flag bad">Almuten I ↔ Regente Hora: concordancia escasa (tema no radical)</span>`;
+  else flags += `<span class="flag bad">Almuten I ↔ Regente Hora: sin coincidencia (tema no radical)</span>`;
   if(v.luna_vacia_de_curso) flags += `<span class="flag bad">Luna vacía de curso</span>`;
   if(v.via_combusta) flags += `<span class="flag bad">Luna en vía combusta</span>`;
   if(v.saturno_en_vii) flags += `<span class="flag bad">Saturno en VII</span>`;
@@ -782,7 +783,7 @@ document.getElementById('btn-exportar-txt').addEventListener('click', ()=>{
   if(!informeActual){ showError('Primero levantá una carta.'); return; }
   const cm = informeActual.chart_meta;
   const s = informeActual.significadores;
-  let t = `CONSULTA DE ASTROLOGÍA HORARIA — MÉTODO BEN EZRA\n`;
+  let t = `CONSULTA DE ASTROLOGÍA HORARIA — MÉTODO DE PEPA SANCHÍS\n`;
   t += `${'='.repeat(50)}\n\n`;
   t += `Fecha/hora: ${cm.fecha_local?.replace('T',' ')}\n`;
   t += `Ascendente: ${cm.asc}    Medio Cielo: ${cm.mc}\n`;
